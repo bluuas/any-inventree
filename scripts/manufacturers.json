@@ -1,0 +1,65 @@
+[
+    {
+        "name": "Cal-Chip Electronics, Inc.",
+        "website": "https://www.calchip.com",
+        "is_customer": true,
+        "is_manufacturer": true,
+        "is_supplier": false
+    },
+    {
+        "name": "KEMET",
+        "website": "https://www.kemet.com",
+        "is_customer": true,
+        "is_manufacturer": true,
+        "is_supplier": false
+    },
+    {
+        "name": "KYOCERA AVX",
+        "website": "https://www.avx.com",
+        "is_customer": true,
+        "is_manufacturer": true,
+        "is_supplier": false
+    },
+    {
+        "name": "Stackpole Electronics, Inc.",
+        "website": "https://www.stackpole.com",
+        "is_customer": true,
+        "is_manufacturer": true,
+        "is_supplier": false
+    },
+    {
+        "name": "TDK Corporation",
+        "website": "https://www.tdk.com",
+        "is_customer": true,
+        "is_manufacturer": true,
+        "is_supplier": false
+    },
+    {
+        "name": "Texas Instruments (TI)",
+        "website": "https://www.ti.com",
+        "is_customer": true,
+        "is_manufacturer": true,
+        "is_supplier": false
+    },
+    {
+        "name": "Vishay Dale",
+        "website": "https://www.vishay.com",
+        "is_customer": true,
+        "is_manufacturer": true,
+        "is_supplier": false
+    },
+    {
+        "name": "Würth Elektronik",
+        "website": "https://www.we-online.com",
+        "is_customer": true,
+        "is_manufacturer": true,
+        "is_supplier": false
+    },
+    {
+        "name": "Yageo",
+        "website": "https://www.yageo.com",
+        "is_customer": true,
+        "is_manufacturer": true,
+        "is_supplier": false
+    }
+]
