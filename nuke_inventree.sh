@@ -3,6 +3,14 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
+# Confirmation prompt
+read -p "u sure? (y/n): " -n 1 -r
+echo    # Move to a new line
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Operation cancelled."
+    exit 1
+fi
+
 # Check if docker-compose is installed
 if ! command -v docker-compose &> /dev/null; then
     echo "docker-compose could not be found. Please install Docker Compose."
