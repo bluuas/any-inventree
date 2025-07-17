@@ -1,138 +1,122 @@
 import os
-import csv
-from inventree.company import Company
+import pandas as pd
+from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part
+import coloredlogs, logging
 
-def find_or_create_category(api, category_name, parent_id=None):
-    """Find or create a category in the InvenTree API.
+# Create a logger object.
+logger = logging.getLogger(__name__)
+coloredlogs.install(level='DEBUG', logger=logger)
 
-    Args:
-        api: The API client instance.
-        category_name (str): The name of the category to find or create.
-        parent_id (int, optional): The ID of the parent category. Defaults to None.
+def handle_part_category(api, _, data):
+    """Handle category entity."""
+    name = data['name']
 
-    Returns:
-        int: The primary key of the found or newly created category.
+    entity_dict = {category.name: category.pk for category in PartCategory.list(api)}
+    if name in entity_dict:
+        logger.debug(f"PartCategory '{name}' already exists as ID: {entity_dict[name]}")
+        return entity_dict[name]
+    
+    new_entity = PartCategory.create(api, data)
+    logger.info(f"PartCategory '{name}' created successfully!")
+    return new_entity.pk
 
-    Raises:
-        Exception: If there is an error during API calls.
-    """
+def handle_company(api, _, data):
+    """Handle company entity."""
+    name = data['name']
+    
+    entity_dict = {company.name: company.pk for company in Company.list(api)}
+    if name in entity_dict:
+        logger.debug(f"Supplier '{name}' already exists!")
+        return entity_dict[name]
+    
+    new_entity = Company.create(api, data)
+    logger.info(f"Supplier '{name}' created successfully!")
+    return new_entity.pk
+
+def handle_part(api, _, data):
+    """Handle part entity."""
+    name = data['name']
+    category_pk = data['category']
+    
+    entity_dict = {part.name: part.pk for part in Part.list(api)}
+    if name in entity_dict:
+        logger.debug(f"Part '{name}' already exists!")
+        return entity_dict[name]
+    
+    new_entity = Part.create(api, data)
+    logger.info(f"Part '{name}' created successfully in category '{category_pk}'!")
+    return new_entity.pk
+
+# Mapping entity types to their handling functions
+handler_map = {
+    Company: handle_company,
+    PartCategory: handle_part_category,
+    Part: handle_part,
+}
+
+def resolve_entity(api, entity_type, data):
+    """Find or create an entity in the InvenTree API."""
     try:
-        # Create a dictionary for fast lookup of categories by name
-        category_dict = {category.name: category.pk for category in PartCategory.list(api)}
-
-        # Check if the category already exists
-        if category_name in category_dict:
-            return category_dict[category_name]
+        handler = handler_map.get(entity_type)
+        if handler:
+            return handler(api, None, data)  # Pass None for the second argument
         else:
-            # Create a new category if it doesn't exist
-            new_category = PartCategory.create(api, {'name': category_name, 'parent': parent_id})
-            return new_category.pk
-        
+            logger.error(f"No handler found for entity type: {entity_type}")
+            raise ValueError(f"Invalid entity type: {entity_type}")
     except Exception as e:
-        # Handle exceptions (logging, re-raising, etc.)
-        print(f"Error finding or creating category: {e}")
-        raise
-
-def find_or_create_supplier(api, supplier_name):
-    """Find or create a supplier in the InvenTree API.
-
-    Args:
-        api: The API client instance.
-        supplier_name (str): The name of the supplier to find or create.
-    """
-    try:
-        # Create a dictionary for fast lookup of suppliers by name
-        supplier_dict = {supplier.name: supplier.pk for supplier in Company.list(api, is_supplier=True)}
-
-        # Check if the supplier already exists
-        if supplier_name in supplier_dict:
-            return supplier_dict[supplier_name]
-        else:
-            # Create a new supplier if it doesn't exist
-            new_supplier = Company.create(api, {'name': supplier_name, 'is_supplier': True, 'is_manufacturer': False})
-            return new_supplier.pk
-    except Exception as e:
-        # Handle exceptions (logging, re-raising, etc.)
-        print(f"Error finding or creating supplier: {e}")
-        raise
-
-def find_or_create_manufacturer(api, manufacturer_name):
-    """Find or create a manufacturer in the InvenTree API.
-
-    Args:
-        api: The API client instance.
-        manufacturer_name (str): The name of the manufacturer to find or create.
-    """
-    try:
-        # Create a dictionary for fast lookup of manufacturers by name
-        manufacturer_dict = {manufacturer.name: manufacturer.pk for manufacturer in Company.list(api, is_manufacturer=True)}
-        # Check if the manufacturer already exists
-        if manufacturer_name in manufacturer_dict:
-            return manufacturer_dict[manufacturer_name]
-        else:
-            # Create a new manufacturer if it doesn't exist
-            new_manufacturer = Company.create(api, {'name': manufacturer_name, 'is_manufacturer': True, 'is_supplier': False})
-            return new_manufacturer.pk
-    except Exception as e:
-        # Handle exceptions (logging, re-raising, etc.)
-        print(f"Error finding or creating manufacturer: {e}")
-        raise
-
-def part_resolve_category(api, category_name, subcategory_name=None):
-    """Resolve the category (/or subcategory) name into a category ID."""
-    try:
-        category_id = find_or_create_category(api, category_name)
-        if subcategory_name:
-            subcategory_id = find_or_create_category(api, subcategory_name, category_id)
-            return subcategory_id
-        return category_id
-    except Exception as e:
-        print(f"Error resolving category: {e}")
-        raise
-def part_resolve_supplier(api, supplier_name):
-    """Resolve the supplier name into a supplier ID."""
-    try:
-        supplier_id = find_or_create_supplier(api, supplier_name)
-        return supplier_id
-    except Exception as e:
-        print(f"Error resolving supplier: {e}")
-        raise
-def part_resolve_manufacturer(api, manufacturer_name):
-    """Resolve the manufacturer name into a manufacturer ID."""
-    try:
-        manufacturer_id = find_or_create_manufacturer(api, manufacturer_name)
-        return manufacturer_id
-    except Exception as e:
-        print(f"Error resolving manufacturer: {e}")
+        logger.error(f"Error finding or creating {entity_type}: {e}")
         raise
 
 def process_csv_files(api, directory):
     """Process all CSV files in the specified directory."""
     for file in os.listdir(directory):
         if file.endswith('.csv'):
-            print(f"Processing {file}...")
-            with open(os.path.join(directory, file), 'r') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    # Skip header and 2nd row
-                    if reader.line_num <= 2:
-                        continue
+            logger.info(f"Processing '{file}'...")
+            try:
+                df = pd.read_csv(os.path.join(directory, file))
+                df = df.iloc[1:]  # Drop the 2nd row, since it only contains the units
 
+                # Extract suppliers and manufacturers from the relevant columns
+                supplier_columns = ['SUPPLIER1', 'SUPPLIER2', 'SUPPLIER3']
+                manufacturer_columns = ['MANUFACTURER1', 'MANUFACTURER2', 'MANUFACTURER3']
+
+                # Concatenate all supplier and manufacturer columns into a single Series, convert to string, and drop empty values
+                suppliers = pd.concat([df[col].dropna().astype(str).str.strip() for col in supplier_columns], ignore_index=True)
+                manufacturers = pd.concat([df[col].dropna().astype(str).str.strip() for col in manufacturer_columns], ignore_index=True)
+
+                # Resolve suppliers and manufacturers
+                # for supplier in suppliers.unique():
+                #     resolve_entity(api, Company, {'name': supplier, 'is_supplier': True, 'is_manufacturer': False})
+                # for manufacturer in manufacturers.unique():
+                #     resolve_entity(api, Company, {'name': manufacturer, 'is_supplier': False, 'is_manufacturer': True})
+
+                # Process each row in the CSV file
+                for _, row in df.iterrows():
+                    category_name = row['CATEGORY']
+                    category_pk = 0
+                    if category_name:
+                        category_pk = resolve_entity(api, PartCategory, {'name': category_name})
+
+                        subcategory_name = row['SUBCATEGORY']
+                        if subcategory_name:
+                            subcategory_pk = resolve_entity(api, PartCategory, {'name': subcategory_name, 'parent': category_pk})
+
+                    # Prepare part data
                     part_data = {
-                        'category': part_resolve_category(api, row['CATEGORY'], row['SUBCATEGORY']),
-                        'name': row['NAME'],
-                        'description': row['DESCRIPTION'],
-                        "initial_supplier": {
-                            "supplier": part_resolve_supplier(api, row['SUPPLIER1']),
-                            "sku": row['SPN1'],
-                            "manufacturer": part_resolve_manufacturer(api, row['MANUFACTURER1']),
-                            "mpn": row['MPN1']
-                        },
+                        'category': subcategory_pk if subcategory_pk else category_pk,
+                        'name': row['NAME'],  # Replace with the actual column name for part
+                        'description': row['DESCRIPTION']
                     }
-                    
-                    try:
-                        part = Part.create(api, part_data)
-                        print(f"Created part: {part.name} in category: {part.category}")
-                    except Exception as e:
-                        print(f"Failed to create part: {e}")
+                    # Resolve part
+                    part_pk = resolve_entity(api, Part, part_data)
+
+                    supplier1_pk = resolve_entity(api, Company, {'name': row['SUPPLIER1'], 'is_supplier': True, 'is_manufacturer': False})
+                    SupplierPart.create(api, {'part': part_pk,'supplier': supplier1_pk, 'SKU': row['SPN1']})
+                    supplier2_pk = resolve_entity(api, Company, {'name': row['SUPPLIER2'], 'is_supplier': True, 'is_manufacturer': False})
+                    SupplierPart.create(api, {'part': part_pk,'supplier': supplier2_pk, 'SKU': row['SPN2']})
+                    supplier3_pk = resolve_entity(api, Company, {'name': row['SUPPLIER3'], 'is_supplier': True, 'is_manufacturer': False})
+                    SupplierPart.create(api, {'part': part_pk,'supplier': supplier3_pk, 'SKU': row['SPN3']})
+
+            except Exception as e:
+                logger.error(f"Error processing '{file}': {e}")
