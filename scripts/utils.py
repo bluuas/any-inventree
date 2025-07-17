@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from inventree.company import Company, SupplierPart, ManufacturerPart
-from inventree.part import PartCategory, Part, ParameterTemplate, Parameter
+from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartCategoryParameterTemplate
 import coloredlogs, logging
 
 logger = logging.getLogger(__name__)
@@ -11,14 +11,18 @@ coloredlogs.install(level='DEBUG', logger=logger)
 cache_part_category = {}
 cache_company = {}
 cache_part = {}
+cache_parameter = {}
 cache_parameter_template = {}
+cache_part_category_parameter_template = {}
 
 # Mapping of entity types to their caches
 cache_mapping = {
     PartCategory: cache_part_category,
     Company: cache_company,
     Part: cache_part,
+    Parameter: cache_parameter,
     ParameterTemplate: cache_parameter_template,
+    PartCategoryParameterTemplate: cache_part_category_parameter_template
 }
 
 def resolve_entity(api, entity_type, data, identifier):
@@ -39,40 +43,46 @@ def resolve_entity(api, entity_type, data, identifier):
     int or None
         The primary key of the created or existing entity, or None if an error occurs.
     """
+    cache = cache_mapping.get(entity_type, {})
+
+    # Check cache first
+    entity_id = cache.get(data[identifier])
+    if entity_id is not None:
+        logger.debug(f"{entity_type.__name__} '{data[identifier]}' found in cache with ID: {entity_id}")
+        return entity_id
+
+    # Fetch all entities from the API and populate the cache
+    entity_dict = {getattr(entity, identifier): entity.pk for entity in entity_type.list(api)}
+    cache.update(entity_dict)
+
+    # Check again after updating the cache
+    entity_id = cache.get(data[identifier])
+    if entity_id is not None:
+        logger.debug(f"{entity_type.__name__} '{data[identifier]}' already exists in database with ID: {entity_id}")
+        return entity_id
+
+    # Create new entity if not found
+    logger.info(f"Creating new {entity_type.__name__} '{data[identifier]}'...")
     try:
-        # Get the appropriate cache for the entity type
-        cache = cache_mapping.get(entity_type, {})
-
-        # Check cache first
-        if data[identifier] in cache:
-            logger.debug(f"{entity_type.__name__} '{data[identifier]}' found in cache!")
-            return cache[data[identifier]]
-
-        # Fetch all entities from the API and populate the cache
-        entity_dict = {getattr(entity, identifier): entity.pk for entity in entity_type.list(api)}
-        cache.update(entity_dict)
-
-        if data[identifier] in cache:
-            logger.debug(f"{entity_type.__name__} '{data[identifier]}' already exists in cache!")
-            return cache[data[identifier]]
-        else:
-            logger.info(f"Creating new {entity_type.__name__} '{data[identifier]}'...")
-            new_entity = entity_type.create(api, data)
-            logger.info(f"{entity_type.__name__} '{data[identifier]}' created successfully!")
-            cache[data[identifier]] = new_entity.pk  # Update cache with new entity
-            return new_entity.pk
+        new_entity = entity_type.create(api, data)
+        logger.info(f"{entity_type.__name__} '{data[identifier]}' created successfully at ID: {new_entity.pk}")
+        cache[data[identifier]] = new_entity.pk  # Update cache with new entity
+        return new_entity.pk
     except Exception as e:
         logger.error(f"Error creating {entity_type.__name__} '{data[identifier]}': {e}")
         return None
 
+
 def process_csv_files(api, directory):
     """Process all CSV files in the specified directory."""
+    # create_parameter_templates(api)
+
     for file in os.listdir(directory):
         if file.endswith('.csv'):
             logger.info(f"Processing '{file}'...")
             try:
                 df = pd.read_csv(os.path.join(directory, file)).iloc[1:]  # Drop the 2nd row with the Units
-                print(df.head())
+
                 for _, row in df.iterrows():
                     # skip very first two rows (header and units)
                     if row.isnull().all():
@@ -95,9 +105,23 @@ def process_csv_files(api, directory):
                     part_data = {
                         'category': subcategory_pk if subcategory_pk else category_pk,
                         'name': row['NAME'],
-                        'description': row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else ''
+                        'description': row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else '',
                     }
+
                     part_pk = resolve_entity(api, Part, part_data, 'name')
+
+
+                    try:
+                        parameter_symbol_template_pk = resolve_entity(api, ParameterTemplate, {
+                            'name':'symbol', 'default_value':'my/default/path'}, 'name')
+                        Parameter.create(api, {'part': part_pk, 'template': parameter_symbol_template_pk, 'data': row['SYMBOL']})
+                        
+                        parameter_footprint_template_pk = resolve_entity(api, ParameterTemplate, {
+                            'name': "footprint", 'default_value': 'my/default/path'}, 'name')
+                        Parameter.create(api, {'part': part_pk, 'template': parameter_footprint_template_pk, 'data': row['FOOTPRINT']})
+                    except Exception as e:
+                        logger.error(f"Error creating Parameter for Part '{part_data['name']} ID {part_pk}': {e}")
+
 
                     # ------------------------ suppliers and manufacturers ----------------------- #
                     suppliers = [row[f'SUPPLIER{i}'] for i in range(1, 4)]
@@ -116,12 +140,12 @@ def process_csv_files(api, directory):
             except Exception as e:
                 logger.error(f"Error processing '{file}': {e}")
 
-def create_parameter_templates(api):
-    resolve_entity(api, ParameterTemplate, {
-        'name': 'symbol',
-        'description': 'KiCad symbol path of the part'
-    }, 'name')
-    resolve_entity(api, ParameterTemplate, {
-        'name': 'footprint',
-        'description': 'KiCad footprint path of the part'
-    }, 'name')
+# def create_parameter_templates(api):
+#     resolve_entity(api, ParameterTemplate, {
+#         'name': 'symbol',
+#         'description': 'KiCad symbol path of the part'
+#     }, 'name')
+#     resolve_entity(api, ParameterTemplate, {
+#         'name': 'footprint',
+#         'description': 'KiCad footprint path of the part'
+#     }, 'name')
