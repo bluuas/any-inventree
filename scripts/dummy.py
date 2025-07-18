@@ -8,6 +8,8 @@ from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, Par
 import coloredlogs, logging
 from tqdm import tqdm
 
+from utils import resolve_entity
+
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG', logger=logger)
 
@@ -27,16 +29,6 @@ cache_mapping = {
     Part: cache_part,
     PartCategory: cache_part_category,
     PartCategoryParameterTemplate: cache_part_category_parameter_template,
-}
-
-# Lookup Table for identifiers per entity type
-identifier_lut = {
-    Company: ['name'],
-    Parameter: ['part', 'template'],
-    ParameterTemplate: ['name'],
-    Part: ['name', 'category'],
-    PartCategory: ['name'],
-    PartCategoryParameterTemplate: ['category', 'parameter_template']
 }
 
 def delete_all(api):
@@ -68,44 +60,6 @@ def delete_all(api):
         except Exception as e:
             logger.error(f"Error deleting {entity_type.__name__} instances: {e}")
 
-def resolve_entity(api, entity_type, data):
-    identifiers = identifier_lut.get(entity_type, [])
-    if not identifiers:
-        logger.error(f"No identifiers found for entity type: {entity_type.__name__}")
-        return None
-    
-    cache = cache_mapping.get(entity_type, {})
-    
-    # Create a composite key from the identifiers
-    composite_key = tuple(data[identifier] for identifier in identifiers if identifier in data)
-    
-    # Check cache first
-    entity_id = cache.get(composite_key)
-    if entity_id is not None:
-        logger.debug(f"{entity_type.__name__} '{composite_key}' found in cache with ID: {entity_id}")
-        return entity_id
-
-    # Fetch all entities from the API and populate the cache
-    entity_dict = {tuple(getattr(entity, identifier) for identifier in identifiers): entity.pk for entity in entity_type.list(api)}
-    cache.update(entity_dict)
-
-    # Check again after updating the cache
-    entity_id = cache.get(composite_key)
-    if entity_id is not None:
-        logger.debug(f"{entity_type.__name__} '{composite_key}' already exists in database with ID: {entity_id}")
-        return entity_id
-
-    # Create new entity if not found
-    try:
-        new_entity = entity_type.create(api, data)
-        logger.info(f"{entity_type.__name__} '{composite_key}' created successfully at ID: {new_entity.pk}")
-        cache[composite_key] = new_entity.pk  # Update cache with new entity
-        return new_entity.pk
-    except Exception as e:
-        logger.error(f"! Error creating {entity_type.__name__} '{composite_key}': {e}")
-        return None
-
-
 def main():
     load_dotenv()
 
@@ -122,53 +76,56 @@ def main():
         logger.error(f"Error deleting InvenTree: {e}")
         return
 
+    # ----------------- create the necessary parameter templates ----------------- #
     try:
-        category_parameter_template_pk = resolve_entity(api, ParameterTemplate, {
-            'name': 'category_parameter',
-            'description': 'This is a category parameter template',
-            'default': 'default category.parameter'
+        category_parameter_template_symbol_pk = resolve_entity(api, ParameterTemplate, {
+            'name': 'symbol',
+            'description': 'The path to the KiCad symbol',
+            'default': 'symbol default path'
         })
-        subcategory1_parameter_template_pk = resolve_entity(api, ParameterTemplate, {
-            'name':'subcategory1_parameter',
-            'description': 'This is a subcategory1 parameter template',
-            'default': 'default subcategory1.parameter'
+        category_parameter_template_footprint_pk = resolve_entity(api, ParameterTemplate, {
+            'name': 'footprint',
+            'description': 'The path to the KiCad footprint',
+            'default': 'footprint default path'
         })
-        subcategory2_parameter_template_pk = resolve_entity(api, ParameterTemplate, {
-            'name':'subcategory2_parameter',
-            'description': 'This is a subcategory2 parameter template',
-            'default': 'default subcategory2.parameter'
+        subcategory_parameter_template_resistance_pk = resolve_entity(api, ParameterTemplate, {
+            'name':'resistance',
+            'description': 'Resistance in ohms',
+            'default': '0'
+        })
+        subcategory_parameter_template_capacitance_pk = resolve_entity(api, ParameterTemplate, {
+            'name':'capacitance',
+            'description': 'Capacitance in farads',
+            'default': '0'
         })
     except Exception as e:
         logger.error(f"Error resolving ParameterTemplate: {e}")
         return
     
+    # ------------------ create the categories and subcategories ----------------- #
     try:
-        category_pk = resolve_entity(api, PartCategory, {'name': 'dummy_category'})
-        subcategory1_pk = resolve_entity(api, PartCategory, {'name': 'dummy_subcategory1', 'parent': category_pk})
-        subcategory2_pk = resolve_entity(api, PartCategory, {'name': 'dummy_subcategory2', 'parent': category_pk})
+        category_passives_pk = resolve_entity(api, PartCategory, {'name': 'dummy_category'})
+        subcategory_resistors_pk = resolve_entity(api, PartCategory, {'name': 'dummy_subcategory1', 'parent': category_passives_pk})
+        subcategory_capacitors_pk = resolve_entity(api, PartCategory, {'name': 'dummy_subcategory2', 'parent': category_passives_pk})
     except Exception as e:
         logger.error(f"Error creating PartCategory or Subcategory: {e}")
 
     try:
-        # list all the existing parameter template names
-        p = [template.name for template in ParameterTemplate.list(api)]
-        logger.info(f"Existing parameter template names: {p}")
-
-        part_category_parameter_template_pk = resolve_entity(api, PartCategoryParameterTemplate, {
-            'category': category_pk,
-            'parameter_template': category_parameter_template_pk,
-            'default_value': 'default PartCategoryParameterTemplate'
+        part_category_parameter_template_symbol_pk = resolve_entity(api, PartCategoryParameterTemplate, {
+            'category': category_passives_pk,
+            'parameter_template': category_parameter_template_symbol_pk,
+            'default_value': 'default PartCategoryParameterTemplate path'
         })
 
         part_subcategory1_parameter_template_pk = resolve_entity(api, PartCategoryParameterTemplate, {
-            'category': subcategory1_pk,
-            'parameter_template': subcategory1_parameter_template_pk,
+            'category': subcategory_resistors_pk,
+            'parameter_template': subcategory_parameter_template_resistance_pk,
             'default_value': 'default PartCategoryParameterTemplate'
         })
 
         part_subcategory2_parameter_template_pk = resolve_entity(api, PartCategoryParameterTemplate, {
-            'category': subcategory2_pk,
-            'parameter_template': subcategory2_parameter_template_pk,
+            'category': subcategory_capacitors_pk,
+            'parameter_template': subcategory_parameter_template_capacitance_pk,
             'default_value': 'default PartCategoryParameterTemplate'
         })
     except Exception as e:
@@ -178,20 +135,20 @@ def main():
     try:
         dummy_part1_pk = resolve_entity(api, Part, {
             'name': 'dummy_part1',
-            'category': category_pk,
+            'category': category_passives_pk,
             'description': 'This is a dummy part description',
+            'copy_category_parameters': True,            
+        })
+        myresistor_pk = resolve_entity(api, Part, {
+            'name': 'myResistor1',
+            'category': subcategory_resistors_pk,
+            'description': 'Resistor 0805 1.2k 10% 10V',
             'copy_category_parameters': True,
         })
-        dummy_part2_pk = resolve_entity(api, Part, {
-            'name': 'dummy_part2',
-            'category': subcategory1_pk,
-            'description': 'This is a dummy part description',
-            'copy_category_parameters': True,
-        })
-        dummy_part3_pk = resolve_entity(api, Part, {
-            'name': 'dummy_part3',
-            'category': subcategory2_pk,
-            'description': 'This is a dummy part description',
+        mycapacitor_pk = resolve_entity(api, Part, {
+            'name': 'myCapacitor1',
+            'category': subcategory_capacitors_pk,
+            'description': 'Capacitor 0805 1uF 10% 10V',
             'copy_category_parameters': True,
         })
 
