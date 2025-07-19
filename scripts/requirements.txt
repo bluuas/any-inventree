@@ -3,3 +3,4 @@ requests
 inventree
 pandas
 coloredlogs
+tqdm

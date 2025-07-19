@@ -89,14 +89,14 @@ def main():
             'default': 'footprint default path'
         })
         subcategory_parameter_template_resistance_pk = resolve_entity(api, ParameterTemplate, {
-            'name':'resistance',
-            'description': 'Resistance in ohms',
-            'default': '0'
+            'name':'Resistance',
+            'units': 'Ω',
+            'description': 'Resistance in ohms'
         })
         subcategory_parameter_template_capacitance_pk = resolve_entity(api, ParameterTemplate, {
-            'name':'capacitance',
+            'name':'Capacitance',
+            'units': 'F',
             'description': 'Capacitance in farads',
-            'default': '0'
         })
     except Exception as e:
         logger.error(f"Error resolving ParameterTemplate: {e}")
@@ -104,40 +104,41 @@ def main():
     
     # ------------------ create the categories and subcategories ----------------- #
     try:
-        category_passives_pk = resolve_entity(api, PartCategory, {'name': 'dummy_category'})
-        subcategory_resistors_pk = resolve_entity(api, PartCategory, {'name': 'dummy_subcategory1', 'parent': category_passives_pk})
-        subcategory_capacitors_pk = resolve_entity(api, PartCategory, {'name': 'dummy_subcategory2', 'parent': category_passives_pk})
+        category_passives_pk = resolve_entity(api, PartCategory, {'name': 'Passives', 'parent': None})
+        subcategory_resistors_pk = resolve_entity(api, PartCategory, {'name': 'Resistors', 'parent': category_passives_pk})
+        subcategory_capacitors_pk = resolve_entity(api, PartCategory, {'name': 'Capacitors', 'parent': category_passives_pk})
     except Exception as e:
         logger.error(f"Error creating PartCategory or Subcategory: {e}")
 
-    try:
-        part_category_parameter_template_symbol_pk = resolve_entity(api, PartCategoryParameterTemplate, {
-            'category': category_passives_pk,
-            'parameter_template': category_parameter_template_symbol_pk,
-            'default_value': 'default PartCategoryParameterTemplate path'
-        })
+    # ---- create and assing the parameter templates to the (sub-) categories ---- #
+    # try:
+    #     part_category_parameter_template_symbol_pk = resolve_entity(api, PartCategoryParameterTemplate, {
+    #         'category': category_passives_pk,
+    #         'parameter_template': category_parameter_template_symbol_pk,
+    #         'default_value': 'default PartCategoryParameterTemplate path'
+    #     })
 
-        part_subcategory1_parameter_template_pk = resolve_entity(api, PartCategoryParameterTemplate, {
-            'category': subcategory_resistors_pk,
-            'parameter_template': subcategory_parameter_template_resistance_pk,
-            'default_value': 'default PartCategoryParameterTemplate'
-        })
+    #     part_subcategory1_parameter_template_pk = resolve_entity(api, PartCategoryParameterTemplate, {
+    #         'category': subcategory_resistors_pk,
+    #         'parameter_template': subcategory_parameter_template_resistance_pk,
+    #         'default_value': 'default PartCategoryParameterTemplate'
+    #     })
 
-        part_subcategory2_parameter_template_pk = resolve_entity(api, PartCategoryParameterTemplate, {
-            'category': subcategory_capacitors_pk,
-            'parameter_template': subcategory_parameter_template_capacitance_pk,
-            'default_value': 'default PartCategoryParameterTemplate'
-        })
-    except Exception as e:
-        logger.error(f"Error resolving PartCategoryParameterTemplate: {e}")
+    #     part_subcategory2_parameter_template_pk = resolve_entity(api, PartCategoryParameterTemplate, {
+    #         'category': subcategory_capacitors_pk,
+    #         'parameter_template': subcategory_parameter_template_capacitance_pk,
+    #         'default_value': 'default PartCategoryParameterTemplate'
+    #     })
+    # except Exception as e:
+    #     logger.error(f"Error resolving PartCategoryParameterTemplate: {e}")
 
-        
+    # ---------------------------- creating the parts ---------------------------- #
     try:
         dummy_part1_pk = resolve_entity(api, Part, {
             'name': 'dummy_part1',
             'category': category_passives_pk,
             'description': 'This is a dummy part description',
-            'copy_category_parameters': True,            
+            'copy_category_parameters': True,
         })
         myresistor_pk = resolve_entity(api, Part, {
             'name': 'myResistor1',
@@ -155,14 +156,26 @@ def main():
     except Exception as e:
         logger.error(f"Error creating Part: {e}")
 
-    # try:
-    #     resolve_parameter(api, Parameter, {
-    #         'part': dummy_part1_pk,
-    #         'template': category_parameter_template_pk,
-    #         'data': "some Parameter data"
-    #     })
-    # except Exception as e:
-    #     logger.error(f"Error creating Parameter for Part {e}")
+    # -------------------- assign the parameters to the parts -------------------- #
+    try:
+        resolve_entity(api, Parameter, {
+            'part': dummy_part1_pk,
+            'template': category_parameter_template_symbol_pk,
+            'data': "./symbol/path"
+        })
+
+        resolve_entity(api, Parameter, {
+            'part': myresistor_pk,
+            'template': subcategory_parameter_template_resistance_pk,
+            'data': "1.2 kΩ"
+        })
+        resolve_entity(api, Parameter, {
+            'part': mycapacitor_pk,
+            'template': subcategory_parameter_template_capacitance_pk,
+            'data': "1 μF",
+        })
+    except Exception as e:
+        logger.error(f"Error creating Parameter for Part {e}")
 
 
 if __name__ == "__main__":

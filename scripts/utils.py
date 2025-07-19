@@ -36,7 +36,7 @@ identifier_lut = {
     PartCategoryParameterTemplate: ['category', 'parameter_template']
 }
 
-def resolve_entity(api, entity_type, data, identifier):
+def resolve_entity(api, entity_type, data):
     """
     Find or create an entity in the InvenTree API based on a specified identifier.
 
