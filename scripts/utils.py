@@ -106,13 +106,13 @@ def delete_all(api):
     
     for part in parts_dict:
         try:
-            logger.info(f"Deactivating part: {part.name} with PK: {part.pk}")
+            logger.debug(f"Deactivating part: {part.name} with PK: {part.pk}")
             part.save(data={
                 'active': False,
                 'name': f"{part.name}",
                 'minimum_stock': 0,
             }, method='PUT')  # Use PUT to update the part
-            logger.info(f"Deleting part: {part.name} with PK: {part.pk}")
+            logger.debug(f"Deleting part: {part.name} with PK: {part.pk}")
             part.delete()  # Now delete the part
         except Exception as e:
             logger.error(f"Error processing part '{part.name}': {e}")
@@ -121,7 +121,7 @@ def delete_all(api):
     for entity_type, cache in cache_mapping.items():
         try:
             entities = entity_type.list(api)
-            logger.info(f"Deleting {len(entities)} instances of {entity_type.__name__}")
+            logger.debug(f"Deleting {len(entities)} instances of {entity_type.__name__}")
             for entity in entities:
                 entity.delete()
             cache.clear()
