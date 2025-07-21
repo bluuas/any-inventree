@@ -92,7 +92,41 @@ def resolve_entity(api, entity_type, data):
     except Exception as e:
         logger.error(f"! Error creating {entity_type.__name__} '{composite_key}': {e}")
         return None
+def delete_all(api):
+    """
+    Delete all parts, other entities, and related data from the InvenTree database.
+    Does not reset the \'pk' values from the database.
 
+    Parameters:
+    api : object
+    """
+    # Step 1: Delete all parts
+    parts_dict = Part.list(api)
+    logger.info(f"Deleting {len(parts_dict)} parts")
+    
+    for part in parts_dict:
+        try:
+            logger.info(f"Deactivating part: {part.name} with PK: {part.pk}")
+            part.save(data={
+                'active': False,
+                'name': f"{part.name}",
+                'minimum_stock': 0,
+            }, method='PUT')  # Use PUT to update the part
+            logger.info(f"Deleting part: {part.name} with PK: {part.pk}")
+            part.delete()  # Now delete the part
+        except Exception as e:
+            logger.error(f"Error processing part '{part.name}': {e}")
+
+    # Step 2: Delete other entities
+    for entity_type, cache in cache_mapping.items():
+        try:
+            entities = entity_type.list(api)
+            logger.info(f"Deleting {len(entities)} instances of {entity_type.__name__}")
+            for entity in entities:
+                entity.delete()
+            cache.clear()
+        except Exception as e:
+            logger.error(f"Error deleting {entity_type.__name__} instances: {e}")
 def process_csv_file(api, file):
     # logger.setLevel(logging.CRITICAL)
     try:
