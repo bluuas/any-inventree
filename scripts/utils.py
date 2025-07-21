@@ -128,9 +128,10 @@ def delete_all(api):
         except Exception as e:
             logger.error(f"Error deleting {entity_type.__name__} instances: {e}")
 def process_csv_file(api, file):
-    # logger.setLevel(logging.CRITICAL)
+    logger.setLevel(logging.INFO)
     try:
         df = pd.read_csv(file).iloc[1:]  # Drop the 2nd row with the Units
+        logger.info(f"Processing {df.shape[0]} row(s) from {file}")
         for _, row in df.iterrows():
         # for _, row in tqdm(df.iterrows(), total=df.shape[0], desc=f"Processing {file}"):
 
@@ -151,7 +152,7 @@ def process_csv_file(api, file):
                 part_subcategory_pk = None
 
             # --------------------------- name and description --------------------------- #
-            part_name = row['NAME']
+            part_name = row['NAME'] if not pd.isna(row['NAME']) else ''
             part_description = row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else ''
 
             # ----------------------------------- part ----------------------------------- #
@@ -170,7 +171,7 @@ def process_csv_file(api, file):
             # -------------------------------- parameters -------------------------------- #
             # get all the parameters inbetween the DESCRIPTION and MANUFACTURER1 columns from left to right
             try:
-                parameters = [row[i] for i in range(df.columns.get_loc('DESCRIPTION'), df.columns.get_loc('MANUFACTURER1')) if not pd.isna(row[i])]
+                parameters = [row.iloc[i] for i in range(df.columns.get_loc('DESCRIPTION'), df.columns.get_loc('MANUFACTURER1')) if not pd.isna(row.iloc[i])]
                 # create parameter templates
                 for i, parameter in enumerate(parameters):
         
