@@ -22,6 +22,9 @@ def main():
         utils.delete_all(api)
         return  # Finish after deleting all entities
 
+    # install the KiCad Plugin for InvenTree
+    utils.install_kicad_plugin(api)
+
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
     csv_source_dir = os.path.join(script_dir, 'csv-database')

@@ -2,8 +2,10 @@ import os
 import pandas as pd
 from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartCategoryParameterTemplate
+from inventree.plugin import InvenTreePlugin
 import coloredlogs, logging
 from tqdm import tqdm
+import requests
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG', logger=logger)
@@ -203,3 +205,22 @@ def process_csv_file(api, file):
 
     except Exception as e:
         logger.error(f"Error processing '{file}': {e}")
+
+def install_kicad_plugin(api):
+    try:
+        plugins = InvenTreePlugin.list(api)
+
+        for plugin in plugins:
+            if plugin.pk == "kicad-library-plugin":
+                return  # Finish after installing the KiCad plugin
+
+        kicad = InvenTreePlugin.create(api,
+        data={
+            'packagename': 'inventree-kicad-plugin',
+            'confirm': True,
+        })
+        kicad.setActive(True)
+        logger.info(f"Installed KiCad plugin with ID: {kicad.pk}")
+    
+    except Exception as e:
+        logger.error(f"Error installing KiCad plugin: {e}")
