@@ -8,32 +8,37 @@ from tqdm import tqdm
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG', logger=logger)
 
-# Caches for entities
-cache_part_category = {}
+# Caches for entities to speed up lookups
 cache_company = {}
-cache_part = {}
 cache_parameter = {}
 cache_parameter_template = {}
+cache_part = {}
+cache_part_category = {}
 cache_part_category_parameter_template = {}
+
+# counter for the (dummy) Internal Part Number IPN
+ipn_counter = 100000
 
 # Mapping of entity types to their caches
 cache_mapping = {
-    PartCategory: cache_part_category,
     Company: cache_company,
-    Part: cache_part,
     Parameter: cache_parameter,
     ParameterTemplate: cache_parameter_template,
-    PartCategoryParameterTemplate: cache_part_category_parameter_template
+    Part: cache_part,
+    PartCategory: cache_part_category,
+    PartCategoryParameterTemplate: cache_part_category_parameter_template,
 }
 
 # Lookup Table for identifiers per entity type
 identifier_lut = {
     Company: ['name'],
+    ManufacturerPart: ['MPN'],
     Parameter: ['part', 'template'],
     ParameterTemplate: ['name'],
     Part: ['name', 'category'],
     PartCategory: ['name'],
-    PartCategoryParameterTemplate: ['category', 'parameter_template']
+    PartCategoryParameterTemplate: ['category', 'parameter_template'],
+    SupplierPart: ['SKU'],
 }
 
 def resolve_entity(api, entity_type, data):
@@ -88,103 +93,78 @@ def resolve_entity(api, entity_type, data):
         logger.error(f"! Error creating {entity_type.__name__} '{composite_key}': {e}")
         return None
 
-def process_csv_files(api, directory):
-    """Process all CSV files in the specified directory."""
+def process_csv_file(api, file):
     # logger.setLevel(logging.CRITICAL)
-
     try:
-        symbol_pk = resolve_entity(api, ParameterTemplate, {
-            'name': 'symbol',
-            'description': 'KiCad symbol path of the part',
-            'default': 'Part.symbol'
-        })
-        footprint_pk = resolve_entity(api, ParameterTemplate, {
-            'name': 'footprint',
-            'description': 'KiCad footprint path of the part',
-            'default': 'Part.footprint'
-        })
-    except Exception as e:
-        logger.error(f"Error resolving ParameterTemplate: {e}")
-        return
+        df = pd.read_csv(file).iloc[1:]  # Drop the 2nd row with the Units
+        for _, row in df.iterrows():
+        # for _, row in tqdm(df.iterrows(), total=df.shape[0], desc=f"Processing {file}"):
 
+            if row.isnull().all():
+                logger.warning(f"Skipping empty row: {row}")
+                continue
 
+            # ------------------------- category and subcategory ------------------------- #
+            if pd.isna(row['CATEGORY']) or pd.isna(row['NAME']):
+                logger.warning(f"Skipping row due to missing CATEGORY or NAME: {row}")
+                continue
 
-    for file in os.listdir(directory):
-        if file.endswith('.csv'):
-            logger.info(f"Processing '{file}'...")
+            part_category_pk = resolve_entity(api, PartCategory, {'name': row['CATEGORY']}) if row['CATEGORY'] else 0
+            
+            if pd.notna(row['SUBCATEGORY']) and row['SUBCATEGORY'].strip(): # only process non-empty subcategory
+                part_subcategory_pk = resolve_entity(api, PartCategory, {'name': row['SUBCATEGORY'], 'parent': part_category_pk})
+            else:
+                part_subcategory_pk = None
+
+            # --------------------------- name and description --------------------------- #
+            part_name = row['NAME']
+            part_description = row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else ''
+
+            # ----------------------------------- part ----------------------------------- #
             try:
-                df = pd.read_csv(os.path.join(directory, file)).iloc[1:]  # Drop the 2nd row with the Units
-                
-                for _, row in df.iterrows():
-                # for _, row in tqdm(df.iterrows(), total=df.shape[0], desc=f"Processing {file}"):
-                    # skip very first two rows (header and units)
-
-                    if row.isnull().all():
-                        logger.warning(f"Skipping empty row: {row}")
-                        continue
-
-                    # ------------------------- category and subcategory ------------------------- #
-                    if pd.isna(row['CATEGORY']) or pd.isna(row['NAME']):
-                        logger.warning(f"Skipping row due to missing CATEGORY or NAME: {row}")
-                        continue
-
-                    category_pk = resolve_entity(api, PartCategory, {'name': row['CATEGORY']}) if row['CATEGORY'] else 0
-                    
-                    if pd.notna(row['SUBCATEGORY']) and row['SUBCATEGORY'].strip(): # only process non-empty subcategory
-                        subcategory_pk = resolve_entity(api, PartCategory, {'name': row['SUBCATEGORY'], 'parent': category_pk})
-                    else:
-                        subcategory_pk = None
-
-                    # PartCategoryParameterTemplate
-                    try:
-                        part_category_parameter_template_pk = resolve_entity(api, PartCategoryParameterTemplate, {
-                            'category': subcategory_pk if subcategory_pk else category_pk,
-                            'parameter_template': symbol_pk,
-                            'default_value': '$'
-                        })
-
-                        logger.info(f"Created PartCategoryParameterTemplate ID: {part_category_parameter_template_pk}")
-                    except Exception as e:
-                        logger.error(f"Error creating PartCategoryParameterTemplate for Category '{category_pk}' and Subcategory '{subcategory_pk}': {e}")
-
-                    # ----------------------------------- part ----------------------------------- #
-                    part_data = {
-                        'category': subcategory_pk if subcategory_pk else category_pk,
-                        'name': row['NAME'],
-                        'description': row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else '',
-                        'copy_category_parameters': True,
-                    }
-                    
-
-                    part_pk = resolve_entity(api, Part, part_data)
-
-
-                    try:
-                        resolve_entity(api, Parameter, {
-                            'part': part_pk,
-                            'template': symbol_pk,
-                            'data': row['SYMBOL']})
-
-                        # parameter_footprint_template_pk = resolve_entity(api, ParameterTemplate, {
-                        #     'name': "footprint", 'default_value': 'my/default/path'})
-                        # Parameter.create(api, {'part': part_pk, 'template': parameter_footprint_template_pk, 'data': row['FOOTPRINT']})
-                    except Exception as e:
-                        logger.error(f"Error creating Parameter for Part '{part_data['name']} ID {part_pk}': {e}")
-
-
-                    # ------------------------ suppliers and manufacturers ----------------------- #
-                    suppliers = [row[f'SUPPLIER{i}'] for i in range(1, 4)]
-                    manufacturers = [row[f'MANUFACTURER{i}'] for i in range(1, 4)]
-                    supplier_pks = [resolve_entity(api, Company, {'name': supplier, 'is_supplier': True, 'is_manufacturer': False}) for supplier in suppliers if pd.notna(supplier)]
-                    manufacturer_pks = [resolve_entity(api, Company, {'name': manufacturer, 'is_supplier': False, 'is_manufacturer': True}) for manufacturer in manufacturers if pd.notna(manufacturer)]
-
-                    for i, manufacturer_pk in enumerate(manufacturer_pks):
-                        if manufacturer_pks[i] and pd.notna(row[f'MPN{i+1}']):
-                            resolve_entity(api, ManufacturerPart, {'part': part_pk, 'manufacturer': manufacturer_pks[i], 'MPN': row[f'MPN{i+1}']})
-
-                    for i, supplier_pk in enumerate(supplier_pks):
-                        if supplier_pks[i] and pd.notna(row[f'SPN{i+1}']):
-                            resolve_entity(api, SupplierPart, {'part': part_pk, 'supplier': supplier_pks[i], 'SKU': row[f'SPN{i+1}']})
-
+                global ipn_counter
+                part_data = {
+                    'category': part_subcategory_pk if part_subcategory_pk else part_category_pk,
+                    'name': part_name,
+                    'description': part_description,
+                    'IPN': ipn_counter
+                }
+                part_pk = resolve_entity(api, Part, part_data)
+                ipn_counter += 1
             except Exception as e:
-                logger.error(f"Error processing '{file}': {e}")
+                logger.error(f"Error creating Part: {e}")
+            # -------------------------------- parameters -------------------------------- #
+            # get all the parameters inbetween the DESCRIPTION and MANUFACTURER1 columns from left to right
+            try:
+                parameters = [row[i] for i in range(df.columns.get_loc('DESCRIPTION'), df.columns.get_loc('MANUFACTURER1')) if not pd.isna(row[i])]
+                # create parameter templates
+                for i, parameter in enumerate(parameters):
+        
+                    parameter_template_pk = resolve_entity(api, ParameterTemplate, {
+                        'name': df.columns[i+df.columns.get_loc('DESCRIPTION')],
+                        })
+                    parameter_pk = resolve_entity(api, Parameter, {
+                        'part': part_pk,
+                        'template': parameter_template_pk,
+                        'data': parameter
+                        })
+                logger.debug(f"Parameters: {parameters}")
+            except Exception as e:
+                logger.error(f"Error creating Parameters: {e}")
+
+            # ------------------------ suppliers and manufacturers ----------------------- #
+            suppliers = [row[f'SUPPLIER{i}'] for i in range(1, 4)]
+            manufacturers = [row[f'MANUFACTURER{i}'] for i in range(1, 4)]
+            supplier_pks = [resolve_entity(api, Company, {'name': supplier, 'is_supplier': True, 'is_manufacturer': False}) for supplier in suppliers if pd.notna(supplier)]
+            manufacturer_pks = [resolve_entity(api, Company, {'name': manufacturer, 'is_supplier': False, 'is_manufacturer': True}) for manufacturer in manufacturers if pd.notna(manufacturer)]
+
+            for i, manufacturer_pk in enumerate(manufacturer_pks):
+                if manufacturer_pks[i] and pd.notna(row[f'MPN{i+1}']):
+                    resolve_entity(api, ManufacturerPart, {'part': part_pk, 'manufacturer': manufacturer_pks[i], 'MPN': row[f'MPN{i+1}']})
+
+            for i, supplier_pk in enumerate(supplier_pks):
+                if supplier_pks[i] and pd.notna(row[f'SPN{i+1}']):
+                    resolve_entity(api, SupplierPart, {'part': part_pk, 'supplier': supplier_pks[i], 'SKU': row[f'SPN{i+1}']})
+
+    except Exception as e:
+        logger.error(f"Error processing '{file}': {e}")
