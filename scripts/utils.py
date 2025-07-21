@@ -10,6 +10,8 @@ import requests
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG', logger=logger)
 
+SITE_URL = os.getenv("INVENTREE_SITE_URL")
+
 # Caches for entities to speed up lookups
 cache_company = {}
 cache_parameter = {}
@@ -42,6 +44,21 @@ identifier_lut = {
     PartCategoryParameterTemplate: ['category', 'parameter_template'],
     SupplierPart: ['SKU'],
 }
+
+# lookup table for schematic reference designators
+def resolve_reference_designator(part_category_name):
+    reference_lut = {
+        'Capacitors': 'C',
+        'Connectors': 'J',
+        'Integrated Circuits': 'U',
+        'LED': 'D',
+        'Resistors': 'R',
+    }
+    if part_category_name in reference_lut:
+        return reference_lut[part_category_name]
+    else:
+        logger.error(f"No reference designator found for part category: {part_category_name}")
+        return ''
 
 def resolve_entity(api, entity_type, data):
     """
@@ -129,8 +146,15 @@ def delete_all(api):
             cache.clear()
         except Exception as e:
             logger.error(f"Error deleting {entity_type.__name__} instances: {e}")
+
 def process_csv_file(api, file):
     logger.setLevel(logging.INFO)
+
+    HEADERS = {
+        "Authorization": f"Token {api.token}",
+        "Content-Type": "application/json"
+    }
+
     try:
         df = pd.read_csv(file).iloc[1:]  # Drop the 2nd row with the Units
         logger.info(f"Processing {df.shape[0]} row(s) from {file}")
@@ -147,9 +171,15 @@ def process_csv_file(api, file):
                 continue
 
             part_category_pk = resolve_entity(api, PartCategory, {'name': row['CATEGORY']}) if row['CATEGORY'] else 0
-            
+            # add the category also to the KiCad plugin
+            requests.post(f"{SITE_URL}/plugin/kicad-library-plugin/api/category/", headers=HEADERS, json={'category': part_category_pk})
+
             if pd.notna(row['SUBCATEGORY']) and row['SUBCATEGORY'].strip(): # only process non-empty subcategory
                 part_subcategory_pk = resolve_entity(api, PartCategory, {'name': row['SUBCATEGORY'], 'parent': part_category_pk})
+                requests.post(f"{SITE_URL}/plugin/kicad-library-plugin/api/category/", headers=HEADERS, json={
+                    'category': part_subcategory_pk,
+                    'default_reference': resolve_reference_designator(row['SUBCATEGORY'])
+                })
             else:
                 part_subcategory_pk = None
 

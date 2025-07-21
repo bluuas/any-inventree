@@ -10,7 +10,7 @@ def main():
 
     load_dotenv()
 
-    API_URL = "http://inventree.localhost/api/"
+    API_URL = os.getenv("INVENTREE_API_URL")
     API_USERNAME = os.getenv("INVENTREE_USERNAME")
     API_PASSWORD = os.getenv("INVENTREE_PASSWORD")
 
