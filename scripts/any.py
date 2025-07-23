@@ -15,7 +15,6 @@ def main():
     API_PASSWORD = os.getenv("INVENTREE_PASSWORD")
 
     api = InvenTreeAPI(API_URL, username=API_USERNAME, password=API_PASSWORD)
-
     args = parser.parse_args()
 
     if args.delete_all:
@@ -34,5 +33,7 @@ def main():
         if filename.endswith('.csv'):
             utils.process_csv_file(api, os.path.join(csv_source_dir, filename))
 
+    utils.update_kicad_plugin(api)
+    
 if __name__ == "__main__":
     main()

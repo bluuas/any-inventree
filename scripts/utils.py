@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from inventree.api import InvenTreeAPI
 from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartCategoryParameterTemplate
 from inventree.plugin import InvenTreePlugin
@@ -10,7 +11,8 @@ import requests
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG', logger=logger)
 
-SITE_URL = os.getenv("INVENTREE_SITE_URL")
+# SITE_URL = os.getenv("INVENTREE_SITE_URL")
+INVENTREE_SITE_URL="http://inventree.localhost" # todo: replace with the .env variable from the parent directory
 
 # Caches for entities to speed up lookups
 cache_company = {}
@@ -111,7 +113,7 @@ def resolve_entity(api, entity_type, data):
     except Exception as e:
         logger.error(f"! Error creating {entity_type.__name__} '{composite_key}': {e}")
         return None
-def delete_all(api):
+def delete_all(api: InvenTreeAPI):
     """
     Delete all parts, other entities, and related data from the InvenTree database.
     Does not reset the \'pk' values from the database.
@@ -147,7 +149,7 @@ def delete_all(api):
         except Exception as e:
             logger.error(f"Error deleting {entity_type.__name__} instances: {e}")
 
-def process_csv_file(api, file):
+def process_csv_file(api: InvenTreeAPI, file):
     logger.setLevel(logging.INFO)
 
     HEADERS = {
@@ -172,11 +174,11 @@ def process_csv_file(api, file):
 
             part_category_pk = resolve_entity(api, PartCategory, {'name': row['CATEGORY']}) if row['CATEGORY'] else 0
             # add the category also to the KiCad plugin
-            requests.post(f"{SITE_URL}/plugin/kicad-library-plugin/api/category/", headers=HEADERS, json={'category': part_category_pk})
+            requests.post(f"{INVENTREE_SITE_URL}/plugin/kicad-library-plugin/api/category/", headers=HEADERS, json={'category': part_category_pk})
 
             if pd.notna(row['SUBCATEGORY']) and row['SUBCATEGORY'].strip(): # only process non-empty subcategory
                 part_subcategory_pk = resolve_entity(api, PartCategory, {'name': row['SUBCATEGORY'], 'parent': part_category_pk})
-                requests.post(f"{SITE_URL}/plugin/kicad-library-plugin/api/category/", headers=HEADERS, json={
+                requests.post(f"{INVENTREE_SITE_URL}/plugin/kicad-library-plugin/api/category/", headers=HEADERS, json={
                     'category': part_subcategory_pk,
                     'default_reference': resolve_reference_designator(row['SUBCATEGORY'])
                 })
@@ -222,35 +224,84 @@ def process_csv_file(api, file):
             # ------------------------ suppliers and manufacturers ----------------------- #
             suppliers = [row[f'SUPPLIER{i}'] for i in range(1, 4)]
             manufacturers = [row[f'MANUFACTURER{i}'] for i in range(1, 4)]
-            supplier_pks = [resolve_entity(api, Company, {'name': supplier, 'is_supplier': True, 'is_manufacturer': False}) for supplier in suppliers if pd.notna(supplier)]
-            manufacturer_pks = [resolve_entity(api, Company, {'name': manufacturer, 'is_supplier': False, 'is_manufacturer': True}) for manufacturer in manufacturers if pd.notna(manufacturer)]
 
-            for i, manufacturer_pk in enumerate(manufacturer_pks):
-                if manufacturer_pks[i] and pd.notna(row[f'MPN{i+1}']):
-                    resolve_entity(api, ManufacturerPart, {'part': part_pk, 'manufacturer': manufacturer_pks[i], 'MPN': row[f'MPN{i+1}']})
+            # Initialize lists to hold primary keys
+            manufacturer_part_pks = []
 
-            for i, supplier_pk in enumerate(supplier_pks):
-                if supplier_pks[i] and pd.notna(row[f'SPN{i+1}']):
-                    resolve_entity(api, SupplierPart, {'part': part_pk, 'supplier': supplier_pks[i], 'SKU': row[f'SPN{i+1}']})
-
+            # Single loop to resolve entities and create parts
+            for i in range(3):
+                supplier = suppliers[i]
+                manufacturer = manufacturers[i]
+                
+                if pd.notna(supplier):
+                    supplier_pk = resolve_entity(api, Company, {'name': supplier, 'is_supplier': True, 'is_manufacturer': False})
+                
+                if pd.notna(manufacturer):
+                    manufacturer_pk = resolve_entity(api, Company, {'name': manufacturer, 'is_supplier': False, 'is_manufacturer': True})
+                    
+                    if manufacturer_pk and pd.notna(row[f'MPN{i+1}']):
+                        manufacturer_part_pk = resolve_entity(api, ManufacturerPart, {'part': part_pk, 'manufacturer': manufacturer_pk, 'MPN': row[f'MPN{i+1}']})
+                        manufacturer_part_pks.append(manufacturer_part_pk)
+                
+                if supplier_pk and pd.notna(row[f'SPN{i+1}']):
+                    resolve_entity(api, SupplierPart, {
+                        'part': part_pk,
+                        'supplier': supplier_pk,
+                        'SKU': row[f'SPN{i+1}'],
+                        'manufacturer_part': manufacturer_part_pks[i] if i < len(manufacturer_part_pks) else None
+                    })
+                    
     except Exception as e:
         logger.error(f"Error processing '{file}': {e}")
 
-def install_kicad_plugin(api):
+def install_kicad_plugin(api: InvenTreeAPI):
     try:
         plugins = InvenTreePlugin.list(api)
 
-        for plugin in plugins:
-            if plugin.pk == "kicad-library-plugin":
-                return  # Finish after installing the KiCad plugin
+        # Check if the KiCad plugin is already installed
+        kicad_plugin = next((plugin for plugin in plugins if plugin.pk == "kicad-library-plugin"), None)
+        
+        if kicad_plugin:
+            return  # Finish if the KiCad plugin is already installed
 
-        kicad = InvenTreePlugin.create(api,
-        data={
+        # Install the KiCad plugin
+        response = api.request(api_url="plugins/install", method="POST", data={
             'packagename': 'inventree-kicad-plugin',
             'confirm': True,
-        })
-        kicad.setActive(True)
-        logger.info(f"Installed KiCad plugin with ID: {kicad.pk}")
-    
+        }) 
+
+        logger.info(f"Installed InvenTree plugin: {response.json()}")
+
+        # Activate the newly installed KiCad plugin
+        kicad_plugin = next((plugin for plugin in plugins if plugin.pk == "kicad-library-plugin"), None)
+        if kicad_plugin:
+            kicad_plugin.setActive(True)
+            logger.info(f"Activated InvenTree plugin: {kicad_plugin.pk}")
+
     except Exception as e:
         logger.error(f"Error installing KiCad plugin: {e}")
+
+def update_kicad_plugin(api: InvenTreeAPI):
+    # update the KiCad plugin settings with the pk's for Footprint, Symbol, Reference and Value Parameter
+    
+    # Get the primary keys for Footprint, Symbol, Reference and Value Parameter
+    footprint_pk = resolve_entity(api, ParameterTemplate, {'name': 'FOOTPRINT'})
+    symbol_pk = resolve_entity(api, ParameterTemplate, {'name': 'SYMBOL'})
+    # reference_pk = resolve_entity(api, ParameterTemplate, {'name': 'Reference'})
+    value_pk = resolve_entity(api, ParameterTemplate, {'name': 'VALUE'})
+
+    # Update the settings
+    settings_url = f"{INVENTREE_SITE_URL}/plugins/kicad-library-plugin/settings/"
+    settings = {
+        'KICAD_FOOTPRINT_PARAMETER': footprint_pk,
+        'KICAD_SYMBOL_PARAMETER': symbol_pk,
+        # 'KICAD_REFERENCE_PARAMETER': reference_pk,
+        'KICAD_VALUE_PARAMETER': value_pk,
+    }
+
+    try:
+        for key, value in settings.items():
+            response = api.request(api_url=f"{settings_url}{key}/", method="PATCH", data={'value': value})
+            logger.info(f"response: {response.json()}")
+    except Exception as e:
+        logger.error(f"Error updating KiCad plugin settings: {e}")
