@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from inventree.api import InvenTreeAPI
+from inventree.base import Attachment
 from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated
 from inventree.plugin import InvenTreePlugin
@@ -16,6 +17,7 @@ KICAD_PLUGIN_PK = "kicad-library-plugin"
 
 # Caches for entities to speed up lookups
 caches = {
+    Attachment: {},
     Company: {},
     ManufacturerPart: {},
     Parameter: {},
@@ -28,6 +30,7 @@ caches = {
 
 # Lookup Table for identifiers per entity type
 IDENTIFIER_LUT = {
+    Attachment: ['filename', 'model_id'],
     Company: ['name'],
     ManufacturerPart: ['MPN'],
     Parameter: ['part', 'template'],
@@ -105,7 +108,6 @@ def delete_all(api: InvenTreeAPI):
             logger.error(f"Error deleting {entity_type.__name__} instances: {e}")
 
 def process_row(api: InvenTreeAPI, row: pd.Series):
-
     # -------------------- create categories and subcategories ------------------- #
     try:
         part_category_pk = resolve_entity(api, PartCategory, {'name': row['CATEGORY'], 'parent': None, 'structural': True})
@@ -141,6 +143,15 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
             'description': part_description,
             'virtual': True,
         })
+        api.patch(url=f"/part/{part_generic_pk}/", data={'link': f"{INVENTREE_SITE_URL}/part/{part_generic_pk}/"})
+        # add the link to itself as datasheet parameter
+        api.post(url="attachment", data={
+            'link': f"{INVENTREE_SITE_URL}/part/{part_generic_pk}/",
+            'comment': 'datasheet',
+            'model_type': 'part',
+            'model_id': part_generic_pk,
+        })
+
         # part_critical_pk = resolve_entity(api, Part, {
         #     'name': part_name_critical,
         #     'category': part_subcategory_critical_pk,
@@ -157,22 +168,44 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
             manufacturer_name = row[f'MANUFACTURER{i}']
             if pd.notna(manufacturer_name):
                 part_name_manufacturer = f"{row['NAME']}_{manufacturer_name}_{row[f'MPN{i}']}".replace(" ", "_")
-                part_manufacturer_pk = resolve_entity(api, Part, {
+                part_specific_pk = resolve_entity(api, Part, {
                     'name': part_name_manufacturer,
                     'category': part_subcategory_specific_pk,
                     'description': part_description,
+                    'link': row[f'DSLINK{i}']
                 })
-                part_specific_pks.append(part_manufacturer_pk)
+                part_specific_pks.append(part_specific_pk)
 
                 # Create relationships between generic and manufacturer parts
                 resolve_entity(api, PartRelated, {
                     'part_1': part_generic_pk,
-                    'part_2': part_manufacturer_pk,
+                    'part_2': part_specific_pk,
+                })
+
+                # add the link to itself as datasheet parameter
+                api.post(url="attachment", data={
+                    'link': row[f'DSLINK{i}'],
+                    'comment': 'datasheet',
+                    'model_type': 'part',
+                    'model_id': part_specific_pk,
                 })
     except Exception as e:
         logger.error(f"Error creating Manufacturer Parts: {e}")
 
     # ----------------------------- create parameters ---------------------------- #
+    # try:
+    #     # Create parameters for generic part
+    #     parameter_datasheet_pk = resolve_entity(api, ParameterTemplate, {
+    #         'name': 'datasheet',
+    #     })
+    #     resolve_entity(api, Parameter, {
+    #         'part': part_generic_pk,
+    #         'template': parameter_datasheet_pk,
+    #         'data': f'{INVENTREE_SITE_URL}/part/{part_generic_pk}/'
+    #     })
+    # except Exception as e:
+    #     logger.error(f"Error creating datasheet parameter for generic part: {e}")
+
     try:
         description_index = row.index.get_loc('DESCRIPTION')
         manufacturer1_index = row.index.get_loc('MANUFACTURER1')
@@ -209,7 +242,8 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
                     logger.error(f"Error creating Parameter for part {part_pk} and template {parameter_template_pk}: {inner_e}")
     except Exception as e:
         logger.error(f"Error processing row: {e}")
-    # Handle suppliers and manufacturers
+
+    # -------------------- handle suppliers and manufacturers -------------------- #
     try:
         for i in range(1, 4):
             manufacturer_name = row[f'MANUFACTURER{i}']
