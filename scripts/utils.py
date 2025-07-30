@@ -193,19 +193,6 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
         logger.error(f"Error creating Manufacturer Parts: {e}")
 
     # ----------------------------- create parameters ---------------------------- #
-    # try:
-    #     # Create parameters for generic part
-    #     parameter_datasheet_pk = resolve_entity(api, ParameterTemplate, {
-    #         'name': 'datasheet',
-    #     })
-    #     resolve_entity(api, Parameter, {
-    #         'part': part_generic_pk,
-    #         'template': parameter_datasheet_pk,
-    #         'data': f'{INVENTREE_SITE_URL}/part/{part_generic_pk}/'
-    #     })
-    # except Exception as e:
-    #     logger.error(f"Error creating datasheet parameter for generic part: {e}")
-
     try:
         description_index = row.index.get_loc('DESCRIPTION')
         manufacturer1_index = row.index.get_loc('MANUFACTURER1')
