@@ -227,6 +227,19 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
                     })
                 except Exception as inner_e:
                     logger.error(f"Error creating Parameter for part {part_pk} and template {parameter_template_pk}: {inner_e}")
+
+        # add the MPN 1 2 & 3 as Parameter to the generic part -> row[f'MPN{i}']
+        for i in range(1, 4):
+            parameter_template_mpn_pk = resolve_entity(api, ParameterTemplate, {
+                'name': f'MPN{i}',
+            })
+            mpn = row[f'MPN{i}']
+            if mpn:  # Check if MPN is not empty
+                resolve_entity(api, Parameter, {
+                    'part': part_generic_pk,
+                    'template': parameter_template_mpn_pk,
+                    'data': mpn
+                })
     except Exception as e:
         logger.error(f"Error processing row: {e}")
 
