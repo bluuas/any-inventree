@@ -247,6 +247,7 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
     try:
         for i in range(1, 4):
             manufacturer_name = row[f'MANUFACTURER{i}']
+            mpn = row[f'MPN{i}']
             supplier_name = row[f'SUPPLIER{i}']
 
             # skip if manufacturer or supplier is empty
@@ -256,11 +257,19 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
 
             manufacturer_pk = resolve_entity(api, Company, {'name': manufacturer_name, 'is_supplier': False, 'is_manufacturer': True})
 
-            if manufacturer_pk and pd.notna(row[f'MPN{i}']):
+            if manufacturer_pk and pd.notna(mpn):
                 manufacturer_part_pk = resolve_entity(api, ManufacturerPart, {
                     'part': part_specific_pks[i-1],
                     'manufacturer': manufacturer_pk,
-                    'MPN': row[f'MPN{i}']
+                    'MPN': mpn
+                })
+                parameter_template_pk = resolve_entity(api, ParameterTemplate, {
+                    'name': 'MPN'
+                })
+                resolve_entity(api, Parameter, {
+                    'part': part_specific_pks[i-1],
+                    'template': parameter_template_pk,
+                    'data': mpn
                 })
 
                 if pd.notna(supplier_name):  # Check for non-empty supplier
