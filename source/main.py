@@ -4,11 +4,14 @@ from dotenv import load_dotenv
 import utils.utils as utils
 import utils.kicad_plugin as kicad_plugin
 import argparse
+import logging
+from logger import setup_logging  # Import the setup_logging function
 
 def main():
     parser = argparse.ArgumentParser(description="InvenTree CLI")
     parser.add_argument('--delete-all', action='store_true', help='Delete all entities')
     parser.add_argument('-d', '--directory', required=True, help='Directory containing CSV files to process')
+    parser.add_argument('--log-level', default='INFO', help='Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)')
 
     load_dotenv()
 
@@ -16,8 +19,15 @@ def main():
     API_USERNAME = os.getenv("INVENTREE_USERNAME")
     API_PASSWORD = os.getenv("INVENTREE_PASSWORD")
 
-    api = InvenTreeAPI(API_URL, username=API_USERNAME, password=API_PASSWORD)
+    # Parse the arguments first
     args = parser.parse_args()
+
+    # Set up the logger with the specified log level
+    setup_logging(getattr(logging, args.log_level.upper(), logging.INFO))
+
+    api = InvenTreeAPI(API_URL, username=API_USERNAME, password=API_PASSWORD)
+
+    logger = logging.getLogger(__name__)  # Define logger for this module
 
     if args.delete_all:
         utils.delete_all(api)
@@ -33,7 +43,7 @@ def main():
 
     # Check if the directory exists
     if not os.path.exists(csv_source_dir):
-        print(f"Error: The directory '{csv_source_dir}' does not exist.")
+        logger.error(f"Error: The directory '{csv_source_dir}' does not exist.")
         return
 
     # Process CSV files in the specified directory

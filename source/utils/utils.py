@@ -7,8 +7,8 @@ from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, Par
 from inventree.stock import StockItem, StockLocation
 import requests
 
-from logger import setup_logger
-logger = setup_logger(__name__)
+import logging
+logger = logging.getLogger(__name__)
 
 
 INVENTREE_SITE_URL = os.getenv("INVENTREE_SITE_URL", "http://inventree.localhost")

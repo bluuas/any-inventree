@@ -1,10 +1,10 @@
 from inventree.api import InvenTreeAPI
 from inventree.part import ParameterTemplate
 from inventree.plugin import InvenTreePlugin
-from utils.utils import resolve_entity
-from logger import setup_logger
+from .utils import resolve_entity
 
-logger = setup_logger(__name__)
+import logging
+logger = logging.getLogger(__name__)
 
 INVENTREE_GLOBAL_SETTINGS = {
     "ENABLE_PLUGINS_URL",
