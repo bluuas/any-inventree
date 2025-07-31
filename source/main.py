@@ -10,7 +10,7 @@ from logger import setup_logging  # Import the setup_logging function
 def main():
     parser = argparse.ArgumentParser(description="InvenTree CLI")
     parser.add_argument('--delete-all', action='store_true', help='Delete all entities')
-    parser.add_argument('-d', '--directory', required=True, help='Directory containing CSV files to process')
+    parser.add_argument('-d', '--directory', default='csv-database', help='Directory containing CSV files to process')
     parser.add_argument('--log-level', default='INFO', help='Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)')
 
     load_dotenv()
