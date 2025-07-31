@@ -115,3 +115,6 @@ InvenTree/web/static
 # other files
 *.deb
 *.env
+
+# inventree data copy as backup
+inventree-data-copy/
