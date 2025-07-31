@@ -4,14 +4,12 @@ from inventree.api import InvenTreeAPI
 from inventree.base import Attachment
 from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated
-from inventree.plugin import InvenTreePlugin
 from inventree.stock import StockItem, StockLocation
-import coloredlogs
-import logging
 import requests
 
-logger = logging.getLogger(__name__)
-coloredlogs.install(level='DEBUG', logger=logger)
+from logger import setup_logger
+logger = setup_logger(__name__)
+
 
 INVENTREE_SITE_URL = os.getenv("INVENTREE_SITE_URL", "http://inventree.localhost")
 KICAD_PLUGIN_PK = "kicad-library-plugin"
@@ -280,7 +278,6 @@ def create_suppliers_and_manufacturers(api, row, part_specific_pks, stock_locati
 
 
 def process_csv_file(api: InvenTreeAPI, filename: str):
-    logger.setLevel(logging.INFO)
     try:
         df = pd.read_csv(filename).iloc[1:]  # Drop the 2nd row with the Units
         logger.info(f"Processing {df.shape[0]} row(s) from {filename}")
@@ -301,69 +298,3 @@ def process_csv_file(api: InvenTreeAPI, filename: str):
                 logger.info(f"Processed row successfully: {row['NAME']}")                 
     except Exception as e:
         logger.error(f"Error processing '{filename}': {e}")
-
-# Constants for settings and plugin keys
-INVENTREE_GLOBAL_SETTINGS = {
-    "ENABLE_PLUGINS_URL",
-    "ENABLE_PLUGINS_APP"
-}
-
-def configure_inventree_plugin_settings(api: InvenTreeAPI):
-    try:
-        for setting in INVENTREE_GLOBAL_SETTINGS:
-            response_data = api.patch(url=f"/settings/global/{setting}/", data={'value': True})
-            if response_data is None:
-                logger.error(f"Failed to set global setting {setting}.")
-                return
-            logger.info(f"Set global setting {setting} to True.")
-    except Exception as e:
-        logger.error(f"Error configuring global settings: {e}")
-
-def install_and_activate_kicad_plugin(api: InvenTreeAPI):
-    try:
-        plugins = InvenTreePlugin.list(api)
-        for plugin in plugins:
-            logger.debug(f"Plugin: pk: {plugin.pk}, name: {plugin.name}")
-
-        kicad_plugin = next((plugin for plugin in plugins if plugin.pk == KICAD_PLUGIN_PK), None)
-        
-        if kicad_plugin:
-            logger.info("KiCad plugin is already installed. Trying to activate.")
-        else:
-            response_data = api.post(url="/plugins/install/", data={
-                'url': 'git+https://github.com/bluuas/inventree_kicad',
-                'packagename': 'inventree-kicad-plugin',
-                'confirm': True,
-            })
-            if response_data is None:
-                logger.error("Failed to install InvenTree plugin.")
-                quit()
-            logger.info(f"Installed InvenTree plugin: {response_data}")
-
-        response_data = api.patch(url=f"/plugins/{KICAD_PLUGIN_PK}/activate/", data={'active': True})
-        if response_data is None:
-            logger.error("Failed to activate KiCad plugin.")
-            quit()
-        logger.info("KiCad plugin is active.")
-    except Exception as e:
-        logger.error(f"Error installing or activating KiCad plugin: {e}")
-        quit()
-
-def update_kicad_plugin_settings(api: InvenTreeAPI):
-    footprint_pk = resolve_entity(api, ParameterTemplate, {'name': 'FOOTPRINT'})
-    symbol_pk = resolve_entity(api, ParameterTemplate, {'name': 'SYMBOL'})
-    designator_pk = resolve_entity(api, ParameterTemplate, {'name': 'DESIGNATOR'})
-    value_pk = resolve_entity(api, ParameterTemplate, {'name': 'VALUE'})
-
-    settings = {
-        'KICAD_FOOTPRINT_PARAMETER': footprint_pk,
-        'KICAD_SYMBOL_PARAMETER': symbol_pk,
-        'KICAD_REFERENCE_PARAMETER': designator_pk,
-        'KICAD_VALUE_PARAMETER': value_pk,
-    }
-    try:
-        for key, value in settings.items():
-            api.patch(url=f"/plugins/{KICAD_PLUGIN_PK}/settings/{key}/", data={'value': value})
-            logger.debug(f"Updated KiCad setting {key} to {value}.")
-    except Exception as e:
-        logger.error(f"Error updating KiCad plugin settings: {e}")

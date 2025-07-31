@@ -1,7 +1,8 @@
 from inventree.api import InvenTreeAPI
 import os
 from dotenv import load_dotenv
-import utils
+import utils.utils as utils
+import utils.kicad_plugin as kicad_plugin
 import argparse
 
 def main():
@@ -22,9 +23,9 @@ def main():
         utils.delete_all(api)
         return
 
-    # Install the KiCad Plugin for InvenTree
-    utils.configure_inventree_plugin_settings(api)
-    utils.install_and_activate_kicad_plugin(api)
+    # Install the kicad_plugin Plugin for InvenTree
+    kicad_plugin.configure(api)
+    kicad_plugin.install(api)
 
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -35,7 +36,7 @@ def main():
         if filename.endswith('.csv'):
             utils.process_csv_file(api, os.path.join(csv_source_dir, filename))
 
-    utils.update_kicad_plugin_settings(api)
+    kicad_plugin.update(api)
 
 if __name__ == "__main__":
     main()
