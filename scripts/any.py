@@ -34,7 +34,7 @@ def main():
         if filename.endswith('.csv'):
             utils.process_csv_file(api, os.path.join(csv_source_dir, filename))
 
-    utils.update_kicad_plugin(api)
+    utils.update_kicad_plugin_settings(api)
     
 if __name__ == "__main__":
     main()

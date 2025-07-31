@@ -349,20 +349,19 @@ def install_and_activate_kicad_plugin(api: InvenTreeAPI):
         logger.error(f"Error installing or activating KiCad plugin: {e}")
         quit()
 
-def update_kicad_plugin(api: InvenTreeAPI):
+def update_kicad_plugin_settings(api: InvenTreeAPI):
+    footprint_pk = resolve_entity(api, ParameterTemplate, {'name': 'FOOTPRINT'})
+    symbol_pk = resolve_entity(api, ParameterTemplate, {'name': 'SYMBOL'})
+    designator_pk = resolve_entity(api, ParameterTemplate, {'name': 'DESIGNATOR'})
+    value_pk = resolve_entity(api, ParameterTemplate, {'name': 'VALUE'})
+
+    settings = {
+        'KICAD_FOOTPRINT_PARAMETER': footprint_pk,
+        'KICAD_SYMBOL_PARAMETER': symbol_pk,
+        'KICAD_REFERENCE_PARAMETER': designator_pk,
+        'KICAD_VALUE_PARAMETER': value_pk,
+    }
     try:
-        footprint_pk = resolve_entity(api, ParameterTemplate, {'name': 'FOOTPRINT'})
-        symbol_pk = resolve_entity(api, ParameterTemplate, {'name': 'SYMBOL'})
-        designator_pk = resolve_entity(api, ParameterTemplate, {'name': 'DESIGNATOR'})
-        value_pk = resolve_entity(api, ParameterTemplate, {'name': 'VALUE'})
-
-        settings = {
-            'KICAD_FOOTPRINT_PARAMETER': footprint_pk,
-            'KICAD_SYMBOL_PARAMETER': symbol_pk,
-            'KICAD_REFERENCE_PARAMETER': designator_pk,
-            'KICAD_VALUE_PARAMETER': value_pk,
-        }
-
         for key, value in settings.items():
             api.patch(url=f"plugins/{KICAD_PLUGIN_PK}/settings/{key}/", data={'value': value})
             logger.debug(f"Updated KiCad setting {key} to {value}.")
