@@ -151,7 +151,7 @@ def create_generic_part(api, row, part_subcategory_generic_pk):
         'virtual': True,
     })
     api.patch(url=f"/part/{part_generic_pk}/", data={'link': f"{INVENTREE_SITE_URL}/part/{part_generic_pk}/"})
-    api.post(url="attachment", data={
+    api.post(url="/attachment/", data={
         'link': f"{INVENTREE_SITE_URL}/part/{part_generic_pk}/",
         'comment': 'datasheet',
         'model_type': 'part',
@@ -178,7 +178,7 @@ def create_specific_parts(api, row, part_generic_pk, part_subcategory_specific_p
                 'part_2': part_specific_pk,
             })
 
-            api.post(url="attachment", data={
+            api.post(url="/attachment/", data={
                 'link': row[f'DSLINK{i}'],
                 'comment': 'datasheet',
                 'model_type': 'part',
@@ -311,7 +311,7 @@ INVENTREE_GLOBAL_SETTINGS = {
 def configure_inventree_plugin_settings(api: InvenTreeAPI):
     try:
         for setting in INVENTREE_GLOBAL_SETTINGS:
-            response_data = api.patch(url=f"settings/global/{setting}/", data={'value': True})
+            response_data = api.patch(url=f"/settings/global/{setting}/", data={'value': True})
             if response_data is None:
                 logger.error(f"Failed to set global setting {setting}.")
                 return
@@ -330,7 +330,7 @@ def install_and_activate_kicad_plugin(api: InvenTreeAPI):
         if kicad_plugin:
             logger.info("KiCad plugin is already installed. Trying to activate.")
         else:
-            response_data = api.post(url="plugins/install", data={
+            response_data = api.post(url="/plugins/install/", data={
                 'url': 'git+https://github.com/bluuas/inventree_kicad',
                 'packagename': 'inventree-kicad-plugin',
                 'confirm': True,
@@ -340,7 +340,7 @@ def install_and_activate_kicad_plugin(api: InvenTreeAPI):
                 quit()
             logger.info(f"Installed InvenTree plugin: {response_data}")
 
-        response_data = api.patch(url=f"plugins/{KICAD_PLUGIN_PK}/activate/", data={'active': True})
+        response_data = api.patch(url=f"/plugins/{KICAD_PLUGIN_PK}/activate/", data={'active': True})
         if response_data is None:
             logger.error("Failed to activate KiCad plugin.")
             quit()
@@ -363,7 +363,7 @@ def update_kicad_plugin_settings(api: InvenTreeAPI):
     }
     try:
         for key, value in settings.items():
-            api.patch(url=f"plugins/{KICAD_PLUGIN_PK}/settings/{key}/", data={'value': value})
+            api.patch(url=f"/plugins/{KICAD_PLUGIN_PK}/settings/{key}/", data={'value': value})
             logger.debug(f"Updated KiCad setting {key} to {value}.")
     except Exception as e:
         logger.error(f"Error updating KiCad plugin settings: {e}")
