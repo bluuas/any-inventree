@@ -46,7 +46,7 @@ IDENTIFIER_LUT = {
     SupplierPart: ['SKU'],
 }
 
-def resolve_entity(api, entity_type, data):
+def resolve_entity(api: InvenTreeAPI, entity_type, data):
     identifiers = IDENTIFIER_LUT.get(entity_type, [])
     if not identifiers:
         logger.error(f"No identifiers found for entity type: {entity_type.__name__}")
@@ -81,7 +81,6 @@ def resolve_entity(api, entity_type, data):
     except Exception as e:
         logger.error(f"Error resolving entity for {entity_type.__name__} '{composite_key}': {e}")
         return None
-
 
 def delete_all(api: InvenTreeAPI):
     parts = Part.list(api)
