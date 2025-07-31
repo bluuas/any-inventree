@@ -291,7 +291,7 @@ def process_csv_file(api: InvenTreeAPI, filename: str):
                 part_subcategory_generic_pk, part_subcategory_specific_pk = create_categories(api, row)
                 add_generic_category_to_kicad_plugin(api, part_subcategory_generic_pk)
                 # ----------------------------------- Parts ---------------------------------- #
-                part_generic_pk = create_generic_part(api, row, part_subcategory_generic_pk, part_subcategory_specific_pk)
+                part_generic_pk = create_generic_part(api, row, part_subcategory_generic_pk)
                 part_specific_pks = create_specific_parts(api, row, part_generic_pk, part_subcategory_specific_pk)
                 # -------------------------------- Parameters -------------------------------- #
                 create_parameters(api, row, part_generic_pk, part_specific_pks)
