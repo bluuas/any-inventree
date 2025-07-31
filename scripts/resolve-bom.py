@@ -13,10 +13,10 @@ def process_bom_file(file_path, parts, parameters):
     # Load the BOM file into a DataFrame
     bom_df = pd.read_csv(file_path)
 
-    # Create a new column 'Part PK' initialized with None
-    bom_df.insert(0, 'Part PK', None)
+    # Create a new column 'InvenTree PK' initialized with None
+    bom_df.insert(0, 'InvenTree PK', None)
 
-    # Create a mapping of MPN to Part PK using parameters
+    # Create a mapping of MPN to InvenTree PK using parameters
     mpn_to_part_pk = {}
     for param in parameters:
         if param['template_detail']['name'] == 'MPN':
@@ -24,16 +24,16 @@ def process_bom_file(file_path, parts, parameters):
             mpn_value = param['data']
             mpn_to_part_pk[mpn_value] = part_pk
 
-    # Match MPNs and populate the 'Part PK' column
+    # Match MPNs and populate the 'InvenTree PK' column
     for index, row in bom_df.iterrows():
         mpn = row.get('MPN')  # Assuming the MPN column is named 'MPN'
         if mpn in mpn_to_part_pk:
-            bom_df.at[index, 'Part PK'] = mpn_to_part_pk[mpn]
+            bom_df.at[index, 'InvenTree PK'] = mpn_to_part_pk[mpn]
 
     # Save the processed BOM file with a "_processed" suffix
-    # processed_file_path = os.path.splitext(file_path)[0] + "_processed.csv"
-    # bom_df.to_csv(processed_file_path, index=False)
-    # logger.info(f"Processed BOM saved to {processed_file_path}")
+    processed_file_path = os.path.splitext(file_path)[0] + "_processed.csv"
+    bom_df.to_csv(processed_file_path, index=False)
+    logger.info(f"Processed BOM saved to {processed_file_path}")
 
     # Log the head of the DataFrame
     logger.info("Head of the processed BOM:")
