@@ -8,7 +8,7 @@ import argparse
 def main():
     parser = argparse.ArgumentParser(description="InvenTree CLI")
     parser.add_argument('--delete-all', action='store_true', help='Delete all entities')
-    parser.add_argument('-d', '--directory', required=True, help='Directory containing CSV files')
+    parser.add_argument('-d', '--directory', required=True, help='Directory containing CSV files to process')
 
     load_dotenv()
 
@@ -30,6 +30,11 @@ def main():
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
     csv_source_dir = os.path.join(script_dir, args.directory)
+
+    # Check if the directory exists
+    if not os.path.exists(csv_source_dir):
+        print(f"Error: The directory '{csv_source_dir}' does not exist.")
+        return
 
     # Process CSV files in the specified directory
     for filename in os.listdir(csv_source_dir):
