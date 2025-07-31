@@ -148,8 +148,8 @@ def create_generic_part(api, row, part_subcategory_generic_pk):
         'description': part_description,
         'virtual': True,
     })
-    api.patch(url=f"/part/{part_generic_pk}/", data={'link': f"{INVENTREE_SITE_URL}/part/{part_generic_pk}/"})
-    api.post(url="/attachment/", data={
+    api.patch(url=f"part/{part_generic_pk}/", data={'link': f"{INVENTREE_SITE_URL}/part/{part_generic_pk}/"})
+    api.post(url="attachment/", data={
         'link': f"{INVENTREE_SITE_URL}/part/{part_generic_pk}/",
         'comment': 'datasheet',
         'model_type': 'part',
@@ -176,7 +176,7 @@ def create_specific_parts(api, row, part_generic_pk, part_subcategory_specific_p
                 'part_2': part_specific_pk,
             })
 
-            api.post(url="/attachment/", data={
+            api.post(url="attachment/", data={
                 'link': row[f'DSLINK{i}'],
                 'comment': 'datasheet',
                 'model_type': 'part',

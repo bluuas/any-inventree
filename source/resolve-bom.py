@@ -54,7 +54,7 @@ def main():
 
     # Fetch parts from the API
     parts = api.get(url='part')
-    parameters = api.get(url='/part/parameter/', search='MPN')
+    parameters = api.get(url='part/parameter/', search='MPN')
     logger.debug(parameters[0])  # Log the first parameter for debugging
 
     # Process the BOM file
