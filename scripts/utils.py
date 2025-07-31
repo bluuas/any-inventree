@@ -5,6 +5,7 @@ from inventree.base import Attachment
 from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated
 from inventree.plugin import InvenTreePlugin
+from inventree.stock import StockItem, StockLocation
 import coloredlogs
 import logging
 import requests
@@ -25,6 +26,8 @@ caches = {
     Part: {},
     PartCategory: {},
     PartRelated: {},
+    StockItem: {},
+    StockLocation: {},
     SupplierPart: {},
 }
 
@@ -38,6 +41,8 @@ IDENTIFIER_LUT = {
     Part: ['name', 'category'],
     PartCategory: ['name', 'parent'],
     PartRelated: ['part_1', 'part_2'],
+    StockItem: ['part', 'supplier_part'],
+    StockLocation: ['name'],
     SupplierPart: ['SKU'],
 }
 
@@ -108,6 +113,15 @@ def delete_all(api: InvenTreeAPI):
             logger.error(f"Error deleting {entity_type.__name__} instances: {e}")
 
 def process_row(api: InvenTreeAPI, row: pd.Series):
+    # ------------------- create a default part stock location ------------------- #
+    try:
+        stock_location_pk = resolve_entity(api, StockLocation, {
+            'name': 'Default',
+            'description': 'Default stock location for all parts'
+        })
+    except Exception as e:
+        logger.error(f"Error creating default stock location: {e}")
+        return
     # -------------------- create categories and subcategories ------------------- #
     try:
         part_category_pk = resolve_entity(api, PartCategory, {'name': row['CATEGORY'], 'parent': None, 'structural': True})
@@ -234,7 +248,7 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
                 'name': f'MPN{i}',
             })
             mpn = row[f'MPN{i}']
-            if mpn:  # Check if MPN is not empty
+            if mpn and pd.notna(mpn):  # Check if MPN is not empty
                 resolve_entity(api, Parameter, {
                     'part': part_generic_pk,
                     'template': parameter_template_mpn_pk,
@@ -257,7 +271,7 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
 
             manufacturer_pk = resolve_entity(api, Company, {'name': manufacturer_name, 'is_supplier': False, 'is_manufacturer': True})
 
-            if manufacturer_pk and pd.notna(mpn):
+            if manufacturer_pk and mpn and pd.notna(mpn):
                 manufacturer_part_pk = resolve_entity(api, ManufacturerPart, {
                     'part': part_specific_pks[i-1],
                     'manufacturer': manufacturer_pk,
@@ -277,10 +291,17 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
                     if supplier_pk and pd.notna(row[f'SPN{i}']):
                         # Ensure part_specific_pks has enough entries
                         if len(part_specific_pks) >= i:
-                            resolve_entity(api, SupplierPart, {
+                            supplier_part = resolve_entity(api, SupplierPart, {
                                 'part': part_specific_pks[i - 1],
                                 'supplier': supplier_pk,
                                 'SKU': row[f'SPN{i}'],
+                            })
+                            # create stock for each supplier part
+                            stock_pk = resolve_entity(api, StockItem, {
+                                'part': part_specific_pks[i - 1],
+                                'supplier_part': supplier_part,
+                                'quantity': 10000,
+                                'location': stock_location_pk,
                             })
 
     except Exception as e:
@@ -328,7 +349,7 @@ def install_and_activate_kicad_plugin(api: InvenTreeAPI):
         else:
             response_data = api.post(url="plugins/install", data={
                 'url': 'git+https://github.com/bluuas/inventree_kicad',
-                'packagename': KICAD_PLUGIN_PK,
+                'packagename': 'inventree-kicad-plugin',
                 'confirm': True,
             })
             if response_data is None:
@@ -343,6 +364,7 @@ def install_and_activate_kicad_plugin(api: InvenTreeAPI):
         logger.info("KiCad plugin is active.")
     except Exception as e:
         logger.error(f"Error installing or activating KiCad plugin: {e}")
+        exit
 
 def update_kicad_plugin(api: InvenTreeAPI):
     try:
