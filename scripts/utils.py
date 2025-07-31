@@ -51,39 +51,37 @@ def resolve_entity(api, entity_type, data):
     if not identifiers:
         logger.error(f"No identifiers found for entity type: {entity_type.__name__}")
         return None
-    
+
     try:
         cache = caches[entity_type]
         composite_key = tuple(data[identifier] for identifier in identifiers if identifier in data)
-    except Exception as e:
-        logger.error(f"Error resolving entity in cache: {e}")
-        return None
 
-    # Check cache first
-    entity_id = cache.get(composite_key)
-    if entity_id is not None:
-        logger.debug(f"{entity_type.__name__} '{composite_key}' found in cache with ID: {entity_id}")
-        return entity_id
+        # Check cache first
+        entity_id = cache.get(composite_key)
+        if entity_id is not None:
+            logger.debug(f"{entity_type.__name__} '{composite_key}' found in cache with ID: {entity_id}")
+            return entity_id
 
-    # Fetch all entities from the API and populate the cache
-    entity_dict = {tuple(getattr(entity, identifier) for identifier in identifiers): entity.pk for entity in entity_type.list(api)}
-    cache.update(entity_dict)
+        # Fetch all entities from the API and populate the cache
+        entity_dict = {tuple(getattr(entity, identifier) for identifier in identifiers): entity.pk for entity in entity_type.list(api)}
+        cache.update(entity_dict)
 
-    # Check again after updating the cache
-    entity_id = cache.get(composite_key)
-    if entity_id is not None:
-        logger.debug(f"{entity_type.__name__} '{composite_key}' already exists in database with ID: {entity_id}")
-        return entity_id
+        # Check again after updating the cache
+        entity_id = cache.get(composite_key)
+        if entity_id is not None:
+            logger.debug(f"{entity_type.__name__} '{composite_key}' already exists in database with ID: {entity_id}")
+            return entity_id
 
-    # Create new entity if not found
-    try:
+        # Create new entity if not found
         new_entity = entity_type.create(api, data)
         logger.debug(f"{entity_type.__name__} '{composite_key}' created successfully at ID: {new_entity.pk}")
         cache[composite_key] = new_entity.pk
         return new_entity.pk
+
     except Exception as e:
-        logger.error(f"! Error creating {entity_type.__name__} '{composite_key}': {e}")
+        logger.error(f"Error resolving entity for {entity_type.__name__} '{composite_key}': {e}")
         return None
+
 
 def delete_all(api: InvenTreeAPI):
     parts = Part.list(api)
@@ -112,29 +110,27 @@ def delete_all(api: InvenTreeAPI):
         except Exception as e:
             logger.error(f"Error deleting {entity_type.__name__} instances: {e}")
 
-def process_row(api: InvenTreeAPI, row: pd.Series):
-    # ------------------- create a default part stock location ------------------- #
+def create_default_stock_location(api):
     try:
-        stock_location_pk = resolve_entity(api, StockLocation, {
+        return resolve_entity(api, StockLocation, {
             'name': 'Default',
             'description': 'Default stock location for all parts'
         })
     except Exception as e:
         logger.error(f"Error creating default stock location: {e}")
         return
-    # -------------------- create categories and subcategories ------------------- #
-    try:
-        part_category_pk = resolve_entity(api, PartCategory, {'name': row['CATEGORY'], 'parent': None, 'structural': True})
-        part_subcategory_pk = resolve_entity(api, PartCategory, {'name': row['SUBCATEGORY'], 'parent': part_category_pk, 'structural':True})
 
-        part_subcategory_generic_pk = resolve_entity(api, PartCategory, {'name': 'generic', 'parent': part_subcategory_pk})
-        # part_subcategory_critical_pk = resolve_entity(api, PartCategory, {'name': 'critical', 'parent': part_subcategory_pk})
-        part_subcategory_specific_pk = resolve_entity(api, PartCategory, {'name':'specific', 'parent': part_subcategory_pk})
-    except Exception as e:
-        logger.error(f"Error creating categories or subcategories: {e}")
-        return
-    
-    # add the generic part category to the KiCad plugin
+def create_categories(api: InvenTreeAPI, row: pd.Series):
+    part_category_pk = resolve_entity(api, PartCategory, {'name': row['CATEGORY'], 'parent': None, 'structural': True})
+    part_subcategory_pk = resolve_entity(api, PartCategory, {'name': row['SUBCATEGORY'], 'parent': part_category_pk, 'structural':True})
+
+    part_subcategory_generic_pk = resolve_entity(api, PartCategory, {'name': 'generic', 'parent': part_subcategory_pk})
+    # part_subcategory_critical_pk = resolve_entity(api, PartCategory, {'name': 'critical', 'parent': part_subcategory_pk})
+    part_subcategory_specific_pk = resolve_entity(api, PartCategory, {'name':'specific', 'parent': part_subcategory_pk})
+
+    return part_subcategory_generic_pk, part_subcategory_specific_pk
+
+def add_generic_category_to_kicad_plugin(api, part_subcategory_generic_pk):
     try:
         HEADERS = {
             "Authorization": f"Token {api.token}",
@@ -145,68 +141,54 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
     except Exception as e:
         logger.error(f"Error adding generic part category to KiCAD plugin: {e}")
 
-    # ------------------------------- create parts ------------------------------- #
-    try:
-        part_name_generic = f"{row['NAME']}_generic"
-        # part_name_critical = f"{row['NAME']}_critical"
-        part_description = row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else ''
+def create_generic_part(api, row, part_subcategory_generic_pk):
+    part_name_generic = f"{row['NAME']}_generic"
+    part_description = row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else ''
 
-        part_generic_pk = resolve_entity(api, Part, {
-            'name': part_name_generic,
-            'category': part_subcategory_generic_pk,
-            'description': part_description,
-            'virtual': True,
-        })
-        api.patch(url=f"/part/{part_generic_pk}/", data={'link': f"{INVENTREE_SITE_URL}/part/{part_generic_pk}/"})
-        # add the link to itself as datasheet parameter
-        api.post(url="attachment", data={
-            'link': f"{INVENTREE_SITE_URL}/part/{part_generic_pk}/",
-            'comment': 'datasheet',
-            'model_type': 'part',
-            'model_id': part_generic_pk,
-        })
+    part_generic_pk = resolve_entity(api, Part, {
+        'name': part_name_generic,
+        'category': part_subcategory_generic_pk,
+        'description': part_description,
+        'virtual': True,
+    })
+    api.patch(url=f"/part/{part_generic_pk}/", data={'link': f"{INVENTREE_SITE_URL}/part/{part_generic_pk}/"})
+    api.post(url="attachment", data={
+        'link': f"{INVENTREE_SITE_URL}/part/{part_generic_pk}/",
+        'comment': 'datasheet',
+        'model_type': 'part',
+        'model_id': part_generic_pk,
+    })
+    return part_generic_pk
 
-        # part_critical_pk = resolve_entity(api, Part, {
-        #     'name': part_name_critical,
-        #     'category': part_subcategory_critical_pk,
-        #     'description': part_description,
-        #     'virtual': True,
-        # })
-    except Exception as e:
-        logger.error(f"Error creating generic or critical part': {e}")
-        return
+def create_specific_parts(api, row, part_generic_pk, part_subcategory_specific_pk):
+    part_specific_pks = []
+    for i in range(1, 4):
+        manufacturer_name = row[f'MANUFACTURER{i}']
+        if pd.notna(manufacturer_name):
+            part_name_manufacturer = f"{row['NAME']}_{manufacturer_name}_{row[f'MPN{i}']}".replace(" ", "_")
+            part_specific_pk = resolve_entity(api, Part, {
+                'name': part_name_manufacturer,
+                'category': part_subcategory_specific_pk,
+                'description': row['DESCRIPTION'],
+                'link': row[f'DSLINK{i}']
+            })
+            part_specific_pks.append(part_specific_pk)
 
-    try:
-        part_specific_pks = []
-        for i in range(1, 4):
-            manufacturer_name = row[f'MANUFACTURER{i}']
-            if pd.notna(manufacturer_name):
-                part_name_manufacturer = f"{row['NAME']}_{manufacturer_name}_{row[f'MPN{i}']}".replace(" ", "_")
-                part_specific_pk = resolve_entity(api, Part, {
-                    'name': part_name_manufacturer,
-                    'category': part_subcategory_specific_pk,
-                    'description': part_description,
-                    'link': row[f'DSLINK{i}']
-                })
-                part_specific_pks.append(part_specific_pk)
+            resolve_entity(api, PartRelated, {
+                'part_1': part_generic_pk,
+                'part_2': part_specific_pk,
+            })
 
-                # Create relationships between generic and manufacturer parts
-                resolve_entity(api, PartRelated, {
-                    'part_1': part_generic_pk,
-                    'part_2': part_specific_pk,
-                })
+            api.post(url="attachment", data={
+                'link': row[f'DSLINK{i}'],
+                'comment': 'datasheet',
+                'model_type': 'part',
+                'model_id': part_specific_pk,
+            })
+    return part_specific_pks
 
-                # add the link to itself as datasheet parameter
-                api.post(url="attachment", data={
-                    'link': row[f'DSLINK{i}'],
-                    'comment': 'datasheet',
-                    'model_type': 'part',
-                    'model_id': part_specific_pk,
-                })
-    except Exception as e:
-        logger.error(f"Error creating Manufacturer Parts: {e}")
 
-    # ----------------------------- create parameters ---------------------------- #
+def create_parameters(api, row, part_generic_pk, part_specific_pks):
     try:
         description_index = row.index.get_loc('DESCRIPTION')
         manufacturer1_index = row.index.get_loc('MANUFACTURER1')
@@ -218,8 +200,6 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
 
         for i, parameter in enumerate(parameters):
             parameter_name = row.index[description_index + 1 + i]
-            
-            # Check if parameter name is valid
             if pd.isna(parameter_name):
                 logger.warning(f"Parameter name at index {description_index + 1 + i} is NaN. Skipping.")
                 continue
@@ -233,39 +213,34 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
                 continue
 
             for part_pk in [part_generic_pk] + part_specific_pks:
-                try:
-                    resolve_entity(api, Parameter, {
-                        'part': part_pk,
-                        'template': parameter_template_pk,
-                        'data': parameter
-                    })
-                except Exception as inner_e:
-                    logger.error(f"Error creating Parameter for part {part_pk} and template {parameter_template_pk}: {inner_e}")
+                resolve_entity(api, Parameter, {
+                    'part': part_pk,
+                    'template': parameter_template_pk,
+                    'data': parameter
+                })
 
-        # add the MPN 1 2 & 3 as Parameter to the generic part -> row[f'MPN{i}']
         for i in range(1, 4):
             parameter_template_mpn_pk = resolve_entity(api, ParameterTemplate, {
                 'name': f'MPN{i}',
             })
             mpn = row[f'MPN{i}']
-            if mpn and pd.notna(mpn):  # Check if MPN is not empty
+            if mpn and pd.notna(mpn):
                 resolve_entity(api, Parameter, {
                     'part': part_generic_pk,
                     'template': parameter_template_mpn_pk,
                     'data': mpn
                 })
     except Exception as e:
-        logger.error(f"Error processing row: {e}")
+        logger.error(f"Error processing parameters: {e}")
 
-    # -------------------- handle suppliers and manufacturers -------------------- #
+def create_suppliers_and_manufacturers(api, row, part_specific_pks, stock_location_pk):
     try:
         for i in range(1, 4):
             manufacturer_name = row[f'MANUFACTURER{i}']
             mpn = row[f'MPN{i}']
             supplier_name = row[f'SUPPLIER{i}']
 
-            # skip if manufacturer or supplier is empty
-            if pd.isna(manufacturer_name):  # Check for non-empty manufacturer
+            if pd.isna(manufacturer_name):
                 logger.debug(f"Skipping manufacturer or supplier because it is empty")
                 continue
 
@@ -286,28 +261,24 @@ def process_row(api: InvenTreeAPI, row: pd.Series):
                     'data': mpn
                 })
 
-                if pd.notna(supplier_name):  # Check for non-empty supplier
+                if pd.notna(supplier_name):
                     supplier_pk = resolve_entity(api, Company, {'name': supplier_name, 'is_supplier': True, 'is_manufacturer': False})
                     if supplier_pk and pd.notna(row[f'SPN{i}']):
-                        # Ensure part_specific_pks has enough entries
                         if len(part_specific_pks) >= i:
                             supplier_part = resolve_entity(api, SupplierPart, {
                                 'part': part_specific_pks[i - 1],
                                 'supplier': supplier_pk,
                                 'SKU': row[f'SPN{i}'],
                             })
-                            # create stock for each supplier part
                             stock_pk = resolve_entity(api, StockItem, {
                                 'part': part_specific_pks[i - 1],
                                 'supplier_part': supplier_part,
                                 'quantity': 10000,
                                 'location': stock_location_pk,
                             })
-
     except Exception as e:
         logger.error(f"Error processing suppliers and manufacturers: {e}")
 
-    logger.info(f"Processed row successfully: {row['NAME']}")
 
 def process_csv_file(api: InvenTreeAPI, filename: str):
     logger.setLevel(logging.INFO)
@@ -315,7 +286,20 @@ def process_csv_file(api: InvenTreeAPI, filename: str):
         df = pd.read_csv(filename).iloc[1:]  # Drop the 2nd row with the Units
         logger.info(f"Processing {df.shape[0]} row(s) from {filename}")
         for _, row in df.iterrows():
-            process_row(api, row)                    
+                # --------------------- Default Stock Location for Parts --------------------- #
+                stock_location_pk = create_default_stock_location(api)
+                # ----------------------- Categories and Subcategories ----------------------- #
+                part_subcategory_generic_pk, part_subcategory_specific_pk = create_categories(api, row)
+                add_generic_category_to_kicad_plugin(api, part_subcategory_generic_pk)
+                # ----------------------------------- Parts ---------------------------------- #
+                part_generic_pk = create_generic_part(api, row, part_subcategory_generic_pk, part_subcategory_specific_pk)
+                part_specific_pks = create_specific_parts(api, row, part_generic_pk, part_subcategory_specific_pk)
+                # -------------------------------- Parameters -------------------------------- #
+                create_parameters(api, row, part_generic_pk, part_specific_pks)
+                # ------------------------ Suppliers and Manufacturers ----------------------- #
+                create_suppliers_and_manufacturers(api, row, part_specific_pks, stock_location_pk)
+
+                logger.info(f"Processed row successfully: {row['NAME']}")                 
     except Exception as e:
         logger.error(f"Error processing '{filename}': {e}")
 
@@ -354,21 +338,20 @@ def install_and_activate_kicad_plugin(api: InvenTreeAPI):
             })
             if response_data is None:
                 logger.error("Failed to install InvenTree plugin.")
-                return
+                quit()
             logger.info(f"Installed InvenTree plugin: {response_data}")
 
         response_data = api.patch(url=f"plugins/{KICAD_PLUGIN_PK}/activate/", data={'active': True})
         if response_data is None:
             logger.error("Failed to activate KiCad plugin.")
-            return
+            quit()
         logger.info("KiCad plugin is active.")
     except Exception as e:
         logger.error(f"Error installing or activating KiCad plugin: {e}")
-        exit
+        quit()
 
 def update_kicad_plugin(api: InvenTreeAPI):
     try:
-        # Resolve primary keys for parameters
         footprint_pk = resolve_entity(api, ParameterTemplate, {'name': 'FOOTPRINT'})
         symbol_pk = resolve_entity(api, ParameterTemplate, {'name': 'SYMBOL'})
         designator_pk = resolve_entity(api, ParameterTemplate, {'name': 'DESIGNATOR'})
@@ -382,10 +365,7 @@ def update_kicad_plugin(api: InvenTreeAPI):
         }
 
         for key, value in settings.items():
-            response_data = api.patch(url=f"plugins/{KICAD_PLUGIN_PK}/settings/{key}/", data={'value': value})
-            if response_data is None:
-                logger.error(f"Failed to update setting {key}.")
-                return
-            logger.info(f"Updated KiCad setting {key} to {value}.")
+            api.patch(url=f"plugins/{KICAD_PLUGIN_PK}/settings/{key}/", data={'value': value})
+            logger.debug(f"Updated KiCad setting {key} to {value}.")
     except Exception as e:
         logger.error(f"Error updating KiCad plugin settings: {e}")
