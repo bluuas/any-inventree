@@ -1,4 +1,4 @@
-# run with python source/create-assembly-from-bom.py -f source/led-flasher.csv
+# run with python source/create-assembly-from-bom.py -f source/led-flasher-kicad-export.csv
 
 from inventree.api import InvenTreeAPI
 from inventree.part import Part, PartCategory, BomItem
