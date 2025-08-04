@@ -81,6 +81,7 @@ def process_bom_file(api, file_path):
             'part': assembly_pk,
             'sub_part': row['InvenTree PK'],
             'quantity': row['Quantity'],
+            'reference': row['Reference'],
             'validated': 'true'
         }
         bom_item_pk = resolve_entity(api, BomItem, item_data)
@@ -105,7 +106,6 @@ def process_bom_file(api, file_path):
     # validate the assembly BOM after processing all items
     api.patch(url=f"/part/{assembly_pk}/bom-validate/", data={'valid': True})
     return
-
 
 def main():
     parser = argparse.ArgumentParser(description="BOM parser CLI")
