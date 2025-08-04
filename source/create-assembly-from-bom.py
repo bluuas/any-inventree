@@ -1,5 +1,5 @@
 from inventree.api import InvenTreeAPI
-from inventree.part import Part, PartCategory
+from inventree.part import Part, PartCategory, BomItem
 import os
 import pandas as pd
 from dotenv import load_dotenv
@@ -34,8 +34,8 @@ def lookup_mpn_in_parts(api, mpn):
     for part_pk, part in parts_cache.items():
         for parameter in part['parameters']:
             if parameter['template_name'] == "MPN" and parameter['data'] == mpn:
-                logger.info(f"Found in cache: MPN: {mpn}, Parameter PK: {parameter['pk']}")
-                return parameter['pk']
+                logger.info(f"Found in cache: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part_pk}")
+                return part_pk
 
     # Fetch parts from the API if not found in cache
     parts = Part.list(api)
@@ -45,8 +45,8 @@ def lookup_mpn_in_parts(api, mpn):
     for part in parts:
         for parameter in part.getParameters():
             if parameter['template_detail']['name'] == "MPN" and parameter['data'] == mpn:
-                logger.info(f"Found in API: MPN: {mpn}, Parameter PK: {parameter['pk']}")
-                return parameter['pk']
+                logger.info(f"Found in API: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part['pk']}")
+                return part['pk']
 
     logger.info(f"MPN: {mpn} not found in cache or API.")
     return None
@@ -68,41 +68,44 @@ def process_bom_file(api, file_path):
     assembly_revision = input("Enter assembly revision (leave empty if not applicable): ")
 
     assembly_pk = create_assembly_part(api, assembly_name, assembly_ipn, assembly_revision)
-    response_df = pd.DataFrame(columns=['Assembly PK', 'Sub Part PK', 'MPN1', 'MPN1 PK', 'MPN2', 'MPN2 PK', 'MPN3', 'MPN3 PK'])
 
+    # Fetch all BOM substitutes once and store them in a dictionary
+    substitutes_response = api.get(url="bom/substitute/")
+    existing_substitutes = {(sub['bom_item'], sub['part']): sub['pk'] for sub in substitutes_response}
+
+    # Process each row in the BOM DataFrame
     for index, row in bom_df.iterrows():
         logger.info(f"Processing BOM item at index {index}: InvenTree PK: {row['InvenTree PK']}")
         item_data = {
             'part': assembly_pk,
             'sub_part': row['InvenTree PK'],
             'quantity': row['Quantity'],
-            'validated': True
+            'validated': 'true'
         }
-        response = api.post(url='bom/import/submit/', data={'items': [item_data]})
+        bom_item_pk = resolve_entity(api, BomItem, item_data)
 
-        if 'items' in response and response['items']:
-            item = response['items'][0]
+        # create BOM substitute for each MPN (with BOM Item PK / Sub Part PK and the MPN PK)
+        for mpn in ['MPN1', 'MPN2', 'MPN3']:
+            mpn_value = row.get(mpn)
+            if pd.notna(mpn_value) and mpn_value:
+                mpn_pk = lookup_mpn_in_parts(api, mpn_value)
+                if mpn_pk:
+                    # Check if the substitute already exists in the cached substitutes
+                    if (bom_item_pk, mpn_pk) in existing_substitutes:
+                        logger.info(f"BOM substitute already exists: BOM Item PK: {bom_item_pk}, Part PK: {mpn_pk}")
+                    else:
+                        # Create a new BOM substitute
+                        bom_substitute_data = {
+                            'bom_item': bom_item_pk,
+                            'part': mpn_pk,
+                        }
+                        api.post(url='bom/substitute/', data=bom_substitute_data)
+                        logger.info(f"Created BOM substitute for Part PK: {mpn_pk} with BOM Item PK: {bom_item_pk}")
+    
+    # validate the assembly BOM after processing all items
+    api.patch(url=f"/part/{assembly_pk}/bom-validate/", data={'valid': 'true'})
+    return
 
-            # Create a temporary DataFrame for the current row
-            temp_df = pd.DataFrame([{
-                'Assembly PK': item.get('part'),
-                'Sub Part PK': item.get('sub_part'),
-                'MPN1': row.get('MPN1'),
-                'MPN1 PK': lookup_mpn_in_parts(api, row.get('MPN1')),
-                'MPN2': row.get('MPN2'),
-                'MPN2 PK': lookup_mpn_in_parts(api, row.get('MPN2')),
-                'MPN3': row.get('MPN3'),
-                'MPN3 PK': lookup_mpn_in_parts(api, row.get('MPN3')),
-            }])
-            # Concatenate the temporary DataFrame with the response DataFrame
-            response_df = pd.concat([response_df, temp_df], ignore_index=True)
-        
-    logger.info(f"Response DataFrame: \n{response_df}")
-
-    # Optionally save the DataFrame to a CSV file
-    # output_file = os.path.splitext(file_path)[0] + '_response.csv'
-    # response_df.to_csv(output_file, index=False)
-    # logger.info(f"Response data saved to {output_file}")
 
 def main():
     parser = argparse.ArgumentParser(description="BOM parser CLI")
