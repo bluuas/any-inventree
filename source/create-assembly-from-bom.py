@@ -26,32 +26,36 @@ def create_assembly_part(api, name, ipn, revision):
     return resolve_entity(api, Part, assembly_data)
 
 def lookup_mpn_in_parts(api, mpn):
-    if not mpn or pd.isna(mpn):
+    if pd.isna(mpn):
         logger.info("MPN is empty or None, skipping lookup.")
         return None
 
     # Check cache first
-    for part_pk, part in parts_cache.items():
-        for parameter in part['parameters']:
-            if parameter['template_name'] == "MPN" and parameter['data'] == mpn:
-                logger.info(f"Found in cache: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part_pk}")
-                return part_pk
+    part_pk = check_cache_for_mpn(api, mpn)
+    if part_pk:
+        return part_pk
+    else:
+        parts = Part.list(api)
+        update_parts_cache(parts)
 
-    # Fetch parts from the API if not found in cache
-    parts = Part.list(api)
-    update_cache(parts)
-
-    # Check again after updating the cache
-    for part in parts:
-        for parameter in part.getParameters():
-            if parameter['template_detail']['name'] == "MPN" and parameter['data'] == mpn:
-                logger.info(f"Found in API: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part['pk']}")
-                return part['pk']
+        # Check again after updating the cache
+        part_pk = check_cache_for_mpn(api, mpn, from_api=True)
+        if part_pk:
+            return part_pk
 
     logger.info(f"MPN: {mpn} not found in cache or API.")
     return None
 
-def update_cache(parts):
+def check_cache_for_mpn(api, mpn, from_api=False):
+    source = parts_cache if not from_api else Part.list(api)
+    for part_pk, part in source.items():
+        for parameter in part['parameters']:
+            if parameter['template_name'] == "MPN" and parameter['data'] == mpn:
+                logger.info(f"Found in {'cache' if not from_api else 'API'}: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part_pk}")
+                return part_pk
+    return None
+
+def update_parts_cache(parts):
     for part in parts:
         part_pk = part['pk']
         part_parameters = part.getParameters()
@@ -84,17 +88,16 @@ def process_bom_file(api, file_path):
         }
         bom_item_pk = resolve_entity(api, BomItem, item_data)
 
-        # create BOM substitute for each MPN (with BOM Item PK / Sub Part PK and the MPN PK)
+        # create BOM substitute for each valid MPN
         for mpn in ['MPN1', 'MPN2', 'MPN3']:
             mpn_value = row.get(mpn)
-            if pd.notna(mpn_value) and mpn_value:
+            if pd.notna(mpn_value):
                 mpn_pk = lookup_mpn_in_parts(api, mpn_value)
                 if mpn_pk:
-                    # Check if the substitute already exists in the cached substitutes
+                    # Check if the substitute already exists in the cached substitutes, else create a new one
                     if (bom_item_pk, mpn_pk) in existing_substitutes:
                         logger.info(f"BOM substitute already exists: BOM Item PK: {bom_item_pk}, Part PK: {mpn_pk}")
                     else:
-                        # Create a new BOM substitute
                         bom_substitute_data = {
                             'bom_item': bom_item_pk,
                             'part': mpn_pk,
@@ -103,7 +106,7 @@ def process_bom_file(api, file_path):
                         logger.info(f"Created BOM substitute for Part PK: {mpn_pk} with BOM Item PK: {bom_item_pk}")
     
     # validate the assembly BOM after processing all items
-    api.patch(url=f"/part/{assembly_pk}/bom-validate/", data={'valid': 'true'})
+    api.patch(url=f"/part/{assembly_pk}/bom-validate/", data={'valid': True})
     return
 
 
