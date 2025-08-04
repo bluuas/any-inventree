@@ -1,3 +1,5 @@
+# run with python source/create-assembly-from-bom.py -f source/led-flasher.csv
+
 from inventree.api import InvenTreeAPI
 from inventree.part import Part, PartCategory, BomItem
 import os
