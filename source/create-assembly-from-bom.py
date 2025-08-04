@@ -11,7 +11,7 @@ import coloredlogs
 from utils.utils import resolve_entity
 
 logger = logging.getLogger(__name__)
-coloredlogs.install(logging.INFO)
+coloredlogs.install(logging.INFO, logger=logger)
 
 parts_cache = {}
 
@@ -29,14 +29,14 @@ def create_assembly_part(api, name, ipn, revision):
 
 def lookup_mpn_in_parts(api, mpn):
     if pd.isna(mpn):
-        logger.info("MPN is empty or None, skipping lookup.")
+        logger.debug("MPN is empty or None, skipping lookup.")
         return None
 
     # Check cache first, else fetch from the API
     for part_pk, part in parts_cache.items():
         for parameter in part['parameters']:
             if parameter['template_name'] == "MPN" and parameter['data'] == mpn:
-                logger.info(f"Found in cache: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part_pk}")
+                logger.debug(f"Found in cache: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part_pk}")
                 return part_pk
 
     parts = Part.list(api)
@@ -46,10 +46,10 @@ def lookup_mpn_in_parts(api, mpn):
     for part in parts:
         for parameter in part.getParameters():
             if parameter['template_detail']['name'] == "MPN" and parameter['data'] == mpn:
-                logger.info(f"Found in API: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part['pk']}")
+                logger.debug(f"Found in API: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part['pk']}")
                 return part['pk']
 
-    logger.info(f"MPN: {mpn} not found in cache or API.")
+    logger.warning(f"MPN: {mpn} not found in cache or API.")
     return None
 
 def update_cache(parts):
@@ -94,18 +94,20 @@ def process_bom_file(api, file_path):
                 if mpn_pk:
                     # Check if the substitute already exists in the cached substitutes, else create a new one
                     if (bom_item_pk, mpn_pk) in existing_substitutes:
-                        logger.info(f"BOM substitute already exists: BOM Item PK: {bom_item_pk}, Part PK: {mpn_pk}")
+                        logger.debug(f"BOM substitute already exists: BOM Item PK: {bom_item_pk}, Part PK: {mpn_pk}")
                     else:
                         bom_substitute_data = {
                             'bom_item': bom_item_pk,
                             'part': mpn_pk,
                         }
                         api.post(url='bom/substitute/', data=bom_substitute_data)
-                        logger.info(f"Created BOM substitute for Part PK: {mpn_pk} with BOM Item PK: {bom_item_pk}")
+                        logger.debug(f"Created BOM substitute for Part PK: {mpn_pk} with BOM Item PK: {bom_item_pk}")
     
     # validate the assembly BOM after processing all items
     api.patch(url=f"/part/{assembly_pk}/bom-validate/", data={'valid': True})
-    return
+
+    logger.info(f"BOM processing completed successfully for file: {file_path}, Named assembly: {assembly_name}, IPN: {assembly_ipn}, Revision: {assembly_revision}")
+
 
 def main():
     parser = argparse.ArgumentParser(description="BOM parser CLI")
