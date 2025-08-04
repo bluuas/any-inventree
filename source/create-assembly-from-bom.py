@@ -6,10 +6,10 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 import argparse
-import logging
-import coloredlogs
 from utils.utils import resolve_entity
 
+import logging
+import coloredlogs
 logger = logging.getLogger(__name__)
 coloredlogs.install(logging.INFO, logger=logger)
 

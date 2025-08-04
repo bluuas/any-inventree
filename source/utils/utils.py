@@ -8,8 +8,17 @@ from inventree.stock import StockItem, StockLocation
 import requests
 
 import logging
+import coloredlogs
 logger = logging.getLogger(__name__)
+coloredlogs.install(logging.INFO, logger=logger)
 
+def set_log_level(level: str):
+    try:
+        log_level = getattr(logging, level.upper(), logging.INFO)
+        coloredlogs.set_level(level=log_level)
+    except AttributeError:
+        logger.error(f"Invalid log level: {level}. Defaulting to INFO.")
+        coloredlogs.set_level(level=logging.INFO)
 
 INVENTREE_SITE_URL = os.getenv("INVENTREE_SITE_URL", "http://inventree.localhost")
 KICAD_PLUGIN_PK = "kicad-library-plugin"

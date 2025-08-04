@@ -5,7 +5,10 @@ import utils.utils as utils
 import utils.kicad_plugin as kicad_plugin
 import argparse
 import logging
-from logger import setup_logging  # Import the setup_logging function
+
+import logging
+import coloredlogs
+
 
 def main():
     parser = argparse.ArgumentParser(description="InvenTree CLI")
@@ -23,11 +26,11 @@ def main():
     args = parser.parse_args()
 
     # Set up the logger with the specified log level
-    setup_logging(getattr(logging, args.log_level.upper(), logging.INFO))
+    logger = logging.getLogger(__name__)
+    coloredlogs.install(getattr(logging, args.log_level.upper(), logging.INFO))
+    utils.set_log_level(args.log_level)
 
     api = InvenTreeAPI(API_URL, username=API_USERNAME, password=API_PASSWORD)
-
-    logger = logging.getLogger(__name__)  # Define logger for this module
 
     if args.delete_all:
         utils.delete_all(api)
