@@ -29,13 +29,13 @@ def create_assembly_part(api, name, ipn, revision):
 
 parts_cache = {}
 def lookup_mpn_in_parts(api, mpn):
-    # return if MPN is None or empty
-    if not mpn:
+    # return if MPN is None, empty or nan
+    if not mpn or pd.isna(mpn):
         logger.info("MPN is empty or None, skipping lookup.")
         return None
+    
     # Check cache first
     for part_pk, part in parts_cache.items():
-        logger.info(f"Checking part: {part['name']} with PK: {part_pk}")
         part_parameters = part['parameters']
         
         # Look for the MPN parameter directly
@@ -92,7 +92,7 @@ def process_bom_file(api, file_path):
 
     # Create a DataFrame to store the part and sub-part details
     # response_df = pd.DataFrame(columns=['Part', 'Sub Part', 'Sub Part Detail', 'MPN1', 'MPN2', 'MPN3'])
-    response_df = pd.DataFrame(columns=['Assembly PK', 'Sub Part PK', 'MPN1', 'MPN2', 'MPN3'])
+    response_df = pd.DataFrame(columns=['Assembly PK', 'Sub Part PK', 'MPN1', 'MPN1 PK', 'MPN2', 'MPN2 PK', 'MPN3', 'MPN3 PK'])
 
     for index, row in bom_df.iterrows():
         # Add each line in the BOM to the assembly, save the "BOM item PK" in the response data
@@ -116,15 +116,17 @@ def process_bom_file(api, file_path):
                 'Sub Part PK': item.get('sub_part'),
                 # 'Sub Part Detail': sub_part_detail,
                 'MPN1': row.get('MPN1'),
+                'MPN1 PK': lookup_mpn_in_parts(api, row.get('MPN1')),
                 'MPN2': row.get('MPN2'),
-                'MPN3': row.get('MPN3')
+                'MPN2 PK': lookup_mpn_in_parts(api, row.get('MPN2')),
+                'MPN3': row.get('MPN3'),
+                'MPN3 PK': lookup_mpn_in_parts(api, row.get('MPN3')),
             }])
             # Concatenate the temporary DataFrame with the response DataFrame
             response_df = pd.concat([response_df, temp_df], ignore_index=True)
         
     logger.info(f"Response DataFrame: \n{response_df}")
 
-    lookup_mpn_in_parts(api, "CRCW08051K00FKEA")
     # Optionally save the DataFrame to a CSV file
     # output_file = os.path.splitext(file_path)[0] + '_response.csv'
     # response_df.to_csv(output_file, index=False)
