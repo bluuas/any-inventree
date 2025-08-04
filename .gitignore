@@ -118,3 +118,6 @@ InvenTree/web/static
 
 # inventree data copy as backup
 inventree-data-copy/
+
+# drawio files
+.$overview.drawio.bkp
