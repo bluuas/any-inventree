@@ -32,32 +32,27 @@ def lookup_mpn_in_parts(api, mpn):
         logger.info("MPN is empty or None, skipping lookup.")
         return None
 
-    # Check cache first
-    part_pk = check_cache_for_mpn(api, mpn)
-    if part_pk:
-        return part_pk
-    else:
-        parts = Part.list(api)
-        update_parts_cache(parts)
+    # Check cache first, else fetch from the API
+    for part_pk, part in parts_cache.items():
+        for parameter in part['parameters']:
+            if parameter['template_name'] == "MPN" and parameter['data'] == mpn:
+                logger.info(f"Found in cache: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part_pk}")
+                return part_pk
 
-        # Check again after updating the cache
-        part_pk = check_cache_for_mpn(api, mpn, from_api=True)
-        if part_pk:
-            return part_pk
+    parts = Part.list(api)
+    update_cache(parts)
+
+    # Check again after updating the cache
+    for part in parts:
+        for parameter in part.getParameters():
+            if parameter['template_detail']['name'] == "MPN" and parameter['data'] == mpn:
+                logger.info(f"Found in API: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part['pk']}")
+                return part['pk']
 
     logger.info(f"MPN: {mpn} not found in cache or API.")
     return None
 
-def check_cache_for_mpn(api, mpn, from_api=False):
-    source = parts_cache if not from_api else Part.list(api)
-    for part_pk, part in source.items():
-        for parameter in part['parameters']:
-            if parameter['template_name'] == "MPN" and parameter['data'] == mpn:
-                logger.info(f"Found in {'cache' if not from_api else 'API'}: MPN: {mpn}, Parameter PK: {parameter['pk']}, Part PK: {part_pk}")
-                return part_pk
-    return None
-
-def update_parts_cache(parts):
+def update_cache(parts):
     for part in parts:
         part_pk = part['pk']
         part_parameters = part.getParameters()
