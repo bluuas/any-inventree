@@ -3,7 +3,7 @@ import pandas as pd
 from inventree.api import InvenTreeAPI
 from inventree.base import Attachment
 from inventree.company import Company, SupplierPart, ManufacturerPart
-from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated
+from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated, BomItem
 from inventree.stock import StockItem, StockLocation
 import requests
 
@@ -17,6 +17,7 @@ KICAD_PLUGIN_PK = "kicad-library-plugin"
 # Caches for entities to speed up lookups
 caches = {
     Attachment: {},
+    BomItem: {},
     Company: {},
     ManufacturerPart: {},
     Parameter: {},
@@ -32,6 +33,7 @@ caches = {
 # Lookup Table for identifiers per entity type
 IDENTIFIER_LUT = {
     Attachment: ['filename', 'model_id'],
+    BomItem: ['part', 'sub_part'],
     Company: ['name'],
     ManufacturerPart: ['MPN'],
     Parameter: ['part', 'template'],
