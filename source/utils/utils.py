@@ -9,8 +9,10 @@ import requests
 
 import logging
 import coloredlogs
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('InvenTreeCLI')
 coloredlogs.install(logging.INFO, logger=logger)
+logging.getLogger().setLevel(logging.WARNING)  # or logging.ERROR
+
 
 def set_log_level(level: str):
     try:
@@ -118,7 +120,7 @@ def delete_all(api: InvenTreeAPI):
         except Exception as e:
             logger.error(f"Error deleting {entity_type.__name__} instances: {e}")
 
-def create_default_stock_location(api):
+def create_default_stock_location(api: InvenTreeAPI):
     try:
         return resolve_entity(api, StockLocation, {
             'name': 'Default',
@@ -138,18 +140,29 @@ def create_categories(api: InvenTreeAPI, row: pd.Series):
 
     return part_subcategory_generic_pk, part_subcategory_specific_pk
 
-def add_generic_category_to_kicad_plugin(api, part_subcategory_generic_pk):
+kicad_category_cache = {}
+def add_generic_category_to_kicad_plugin(api: InvenTreeAPI, part_subcategory_generic_pk: int):
+    # Check if the category is already in the cache
+    if part_subcategory_generic_pk in kicad_category_cache:
+        logger.debug(f"Category {part_subcategory_generic_pk} is already in the cache.")
+        return
+
     try:
         HEADERS = {
             "Authorization": f"Token {api.token}",
             "Content-Type": "application/json"
         }
         response = requests.post(f"{INVENTREE_SITE_URL}/plugin/{KICAD_PLUGIN_PK}/api/category/", headers=HEADERS, json={'category': part_subcategory_generic_pk})
-        logger.debug(f"Adding generic part category to KiCAD plugin: {response.json()}")
+
+        if response.status_code == 201:  # Assuming 201 Created is the success status
+            kicad_category_cache[part_subcategory_generic_pk] = True  # Add to cache
+            logger.debug(f"Added category {part_subcategory_generic_pk} to cache and KiCAD plugin: {response.json()}")
+        else:
+            logger.error(f"Failed to add category {part_subcategory_generic_pk} to KiCAD plugin: {response.status_code} - {response.text}")
     except Exception as e:
         logger.error(f"Error adding generic part category to KiCAD plugin: {e}")
 
-def create_generic_part(api, row, part_subcategory_generic_pk):
+def create_generic_part(api: InvenTreeAPI, row, part_subcategory_generic_pk):
     part_name_generic = f"{row['NAME']}_generic"
     part_description = row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else ''
 
@@ -169,7 +182,7 @@ def create_generic_part(api, row, part_subcategory_generic_pk):
     })
     return part_generic_pk
 
-def create_specific_parts(api, row, part_generic_pk, part_subcategory_specific_pk):
+def create_specific_parts(api: InvenTreeAPI, row, part_generic_pk, part_subcategory_specific_pk):
     part_specific_pks = []
     for i in range(1, 4):
         manufacturer_name = row[f'MANUFACTURER{i}']
@@ -198,7 +211,7 @@ def create_specific_parts(api, row, part_generic_pk, part_subcategory_specific_p
     return part_specific_pks
 
 
-def create_parameters(api, row, part_generic_pk, part_specific_pks):
+def create_parameters(api: InvenTreeAPI, row, part_generic_pk, part_specific_pks):
     try:
         description_index = row.index.get_loc('DESCRIPTION')
         manufacturer1_index = row.index.get_loc('MANUFACTURER1')
@@ -243,7 +256,7 @@ def create_parameters(api, row, part_generic_pk, part_specific_pks):
     except Exception as e:
         logger.error(f"Error processing parameters: {e}")
 
-def create_suppliers_and_manufacturers(api, row, part_specific_pks, stock_location_pk):
+def create_suppliers_and_manufacturers(api: InvenTreeAPI, row, part_specific_pks, stock_location_pk):
     try:
         for i in range(1, 4):
             manufacturer_name = row[f'MANUFACTURER{i}']

@@ -1,3 +1,9 @@
+import logging
+import coloredlogs
+
+logger = logging.getLogger('InvenTreeCLI')
+coloredlogs.set_level(logging.INFO)  # or logging.ERROR
+
 from inventree.api import InvenTreeAPI
 import os
 from dotenv import load_dotenv
@@ -5,10 +11,6 @@ import utils.utils as utils
 import utils.kicad_plugin as kicad_plugin
 import argparse
 import logging
-
-import logging
-import coloredlogs
-
 
 def main():
     parser = argparse.ArgumentParser(description="InvenTree CLI")
@@ -26,9 +28,7 @@ def main():
     args = parser.parse_args()
 
     # Set up the logger with the specified log level
-    logger = logging.getLogger(__name__)
-    coloredlogs.install(getattr(logging, args.log_level.upper(), logging.INFO))
-    utils.set_log_level(args.log_level)
+    coloredlogs.set_level(getattr(logging, args.log_level.upper(), logging.INFO))
 
     api = InvenTreeAPI(API_URL, username=API_USERNAME, password=API_PASSWORD)
 
