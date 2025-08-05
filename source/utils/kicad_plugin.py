@@ -2,9 +2,19 @@ from inventree.api import InvenTreeAPI
 from inventree.part import ParameterTemplate
 from inventree.plugin import InvenTreePlugin
 from .utils import resolve_entity
+# import requests
+# from dotenv import load_dotenv
+# import os
 
 import logging
+import coloredlogs
 logger = logging.getLogger(__name__)
+coloredlogs.install(logging.INFO, logger=logger)
+
+# load_dotenv()
+# load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+# INVENTREE_SITE_URL = os.getenv("INVENTREE_SITE_URL", "http://inventree.localhost")
 
 INVENTREE_GLOBAL_SETTINGS = {
     "ENABLE_PLUGINS_URL",
@@ -12,6 +22,44 @@ INVENTREE_GLOBAL_SETTINGS = {
 }
 
 KICAD_PLUGIN_PK = "kicad-library-plugin"  # Ensure this constant is defined
+
+# kicad_category_dict = {}
+
+# def get_headers(api):
+#     return {
+#         "Authorization": f"Token {api.token}",
+#         "Content-Type": "application/json"
+#     }
+
+# def get_active_categories(api):
+#     response = requests.get(f"{INVENTREE_SITE_URL}/plugin/{KICAD_PLUGIN_PK}/api/category/", headers=get_headers(api))
+#     if response.status_code == 200:
+#         return response.json()  # Return the list of active categories
+#     else:
+#         logger.error(f"Failed to retrieve active categories: {response.status_code} - {response.text}")
+#         return []
+
+# def add_category(api, pk):
+#     if pk in kicad_category_dict:  # Check if already cached
+#         logger.debug(f"Category {pk} is already in the cache.")
+#         return
+
+#     active_categories = get_active_categories(api)
+    
+#     if any(category['category']['id'] == pk for category in active_categories):  # Check if exists
+#         logger.debug(f"Category {pk} already exists.")
+#         kicad_category_dict[pk] = True  # Cache it
+#         return
+#     # create new
+#     try:
+#         response = requests.post(f"{INVENTREE_SITE_URL}/plugin/{KICAD_PLUGIN_PK}/api/category/", headers=get_headers(api), json={'category': pk})
+#         if response.status_code == 201:  # Success
+#             kicad_category_dict[pk] = True  # Cache it
+#             logger.debug(f"Added category {pk}: {response.json()}")
+#         else:
+#             logger.error(f"Failed to add category {pk}: {response.status_code} - {response.text}")
+#     except Exception as e:
+#         logger.error(f"Error adding category {pk}: {e}")
 
 def configure(api: InvenTreeAPI):
     """Configure global settings for InvenTree."""
