@@ -1,18 +1,22 @@
 import logging
 import coloredlogs
-
-logger = logging.getLogger('InvenTreeCLI')
-coloredlogs.set_level(logging.INFO)  # or logging.ERROR
-
-from inventree.api import InvenTreeAPI
 import os
 from dotenv import load_dotenv
-import utils.utils as utils
-import utils.kicad_plugin as kicad_plugin
 import argparse
-import logging
+from inventree.api import InvenTreeAPI
+
+# Import refactored utilities
+from utils.logging_utils import logger, set_log_level
+from utils.delete_utils import delete_all
+from utils.plugin import configure, install, update
+from utils.csv_processing import process_csv_file, process_configuration_file
+
 
 def main():
+    """
+    Main entry point for the InvenTree CLI.
+    Parses arguments, sets up logging, connects to API, and processes CSV files.
+    """
     parser = argparse.ArgumentParser(description="InvenTree CLI")
     parser.add_argument('--delete-all', action='store_true', help='Delete all entities')
     parser.add_argument('-d', '--directory', default='csv-database', help='Directory containing CSV files to process')
@@ -23,22 +27,20 @@ def main():
     API_URL = os.getenv("INVENTREE_API_URL")
     API_USERNAME = os.getenv("INVENTREE_USERNAME")
     API_PASSWORD = os.getenv("INVENTREE_PASSWORD")
+    SITE_URL = os.getenv("INVENTREE_SITE_URL", "http://inventree.localhost")
 
-    # Parse the arguments first
     args = parser.parse_args()
-
-    # Set up the logger with the specified log level
-    coloredlogs.set_level(getattr(logging, args.log_level.upper(), logging.INFO))
+    set_log_level(args.log_level)
 
     api = InvenTreeAPI(API_URL, username=API_USERNAME, password=API_PASSWORD)
 
     if args.delete_all:
-        utils.delete_all(api)
+        delete_all(api)
         return
 
-    # Install the kicad_plugin Plugin for InvenTree
-    kicad_plugin.configure(api)
-    kicad_plugin.install(api)
+    # Install and configure the KiCad plugin
+    configure(api)
+    install(api)
 
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -49,12 +51,18 @@ def main():
         logger.error(f"Error: The directory '{csv_source_dir}' does not exist.")
         return
 
-    # Process CSV files in the specified directory
+    # Process Configuration CSV files first
     for filename in os.listdir(csv_source_dir):
-        if filename.endswith('.csv'):
-            utils.process_csv_file(api, os.path.join(csv_source_dir, filename))
+        if filename.endswith('Configuration.csv'):
+            process_configuration_file(api, os.path.join(csv_source_dir, filename))
 
-    kicad_plugin.update(api)
+    # Then process all other CSV files
+    for filename in os.listdir(csv_source_dir):
+        if filename.endswith('.csv') and not filename.endswith('Configuration.csv'):
+            pass
+            # process_csv_file(api, os.path.join(csv_source_dir, filename), site_url=SITE_URL)
+
+    # update(api)
 
 if __name__ == "__main__":
     main()
