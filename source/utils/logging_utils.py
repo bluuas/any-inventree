@@ -5,10 +5,11 @@ import logging
 import coloredlogs
 
 logger = logging.getLogger('InvenTreeCLI')
+logger.propagate = False  # Prevent log message duplication
 
-# Set up coloredlogs for the logger
-coloredlogs.install(logging.INFO, logger=logger)
-
+# Only install coloredlogs if no handlers are present
+if not logger.hasHandlers():
+    coloredlogs.install(logging.INFO, logger=logger)
 
 def set_log_level(level: str):
     """
@@ -16,7 +17,9 @@ def set_log_level(level: str):
     """
     try:
         log_level = getattr(logging, level.upper(), logging.INFO)
+        logger.setLevel(log_level)
         coloredlogs.set_level(level=log_level)
     except AttributeError:
         logger.error(f"Invalid log level: {level}. Defaulting to INFO.")
+        logger.setLevel(logging.INFO)
         coloredlogs.set_level(level=logging.INFO)
