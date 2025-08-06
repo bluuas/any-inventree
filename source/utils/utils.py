@@ -307,20 +307,23 @@ def process_csv_file(api: InvenTreeAPI, filename: str):
     try:
         df = pd.read_csv(filename).iloc[1:]  # Drop the 2nd row with the Units
         logger.info(f"Processing {df.shape[0]} row(s) from {filename}")
-        for _, row in df.iterrows():
-                # --------------------- Default Stock Location for Parts --------------------- #
-                stock_location_pk = create_default_stock_location(api)
-                # ----------------------- Categories and Subcategories ----------------------- #
-                part_subcategory_generic_pk, part_subcategory_specific_pk = create_categories(api, row)
-                add_generic_category_to_kicad_plugin(api, part_subcategory_generic_pk)
-                # ----------------------------------- Parts ---------------------------------- #
-                part_generic_pk = create_generic_part(api, row, part_subcategory_generic_pk)
-                part_specific_pks = create_specific_parts(api, row, part_generic_pk, part_subcategory_specific_pk)
-                # -------------------------------- Parameters -------------------------------- #
-                create_parameters(api, row, part_generic_pk, part_specific_pks)
-                # ------------------------ Suppliers and Manufacturers ----------------------- #
-                create_suppliers_and_manufacturers(api, row, part_specific_pks, stock_location_pk)
+        for i, row in df.iterrows():
+            # for dummy purposes, don't process the whole file
+            if i > 20:
+                break
+            # --------------------- Default Stock Location for Parts --------------------- #
+            stock_location_pk = create_default_stock_location(api)
+            # ----------------------- Categories and Subcategories ----------------------- #
+            part_subcategory_generic_pk, part_subcategory_specific_pk = create_categories(api, row)
+            add_generic_category_to_kicad_plugin(api, part_subcategory_generic_pk)
+            # ----------------------------------- Parts ---------------------------------- #
+            part_generic_pk = create_generic_part(api, row, part_subcategory_generic_pk)
+            part_specific_pks = create_specific_parts(api, row, part_generic_pk, part_subcategory_specific_pk)
+            # -------------------------------- Parameters -------------------------------- #
+            create_parameters(api, row, part_generic_pk, part_specific_pks)
+            # ------------------------ Suppliers and Manufacturers ----------------------- #
+            create_suppliers_and_manufacturers(api, row, part_specific_pks, stock_location_pk)
 
-                logger.info(f"Processed row successfully: {row['NAME']}")                 
+            logger.info(f"Processed row successfully: {row['NAME']}")                 
     except Exception as e:
         logger.error(f"Error processing '{filename}': {e}")
