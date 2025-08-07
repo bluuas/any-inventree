@@ -10,8 +10,9 @@ from .entity_resolver import resolve_entity
 logger = logging.getLogger('InvenTreeCLI')
 
 INVENTREE_GLOBAL_SETTINGS = {
-    "ENABLE_PLUGINS_URL",
-    "ENABLE_PLUGINS_APP"
+    "ENABLE_PLUGINS_URL": True,
+    "ENABLE_PLUGINS_APP": True,
+    "PART_PARAMETER_ENFORCE_UNITS": False
 }
 
 KICAD_PLUGIN_PK = "kicad-library-plugin"
@@ -19,12 +20,12 @@ KICAD_PLUGIN_PK = "kicad-library-plugin"
 def configure(api: InvenTreeAPI):
     """Configure global settings for InvenTree."""
     try:
-        for setting in INVENTREE_GLOBAL_SETTINGS:
-            response_data = api.patch(url=f"settings/global/{setting}/", data={'value': True})
+        for setting, value in INVENTREE_GLOBAL_SETTINGS.items():
+            response_data = api.patch(url=f"settings/global/{setting}/", data={'value': value})
             if response_data is None:
                 logger.error(f"Failed to set global setting {setting}.")
                 return
-            logger.info(f"Set global setting {setting} to True.")
+            logger.info(f"Set global setting {setting} to {value}.")
     except Exception as e:
         logger.error(f"Error configuring global settings: {e}")
 
