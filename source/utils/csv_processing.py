@@ -42,6 +42,7 @@ def process_database_file(api, filename, site_url=None):
                 'category': category_pk,
                 'description': row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else '',
                 'revision': row['REVISION'] if not pd.isna(row['REVISION']) else '0',
+                'virtual': str(row['TYPE']).strip().lower() in ['generic', 'critical'],
             })
 
             # create_parameters(api, row, part_generic_pk, part_specific_pks)
