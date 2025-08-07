@@ -4,6 +4,7 @@ CSV file processing logic for importing data into InvenTree.
 import logging
 import pandas as pd
 from .part_creation import (
+    create_part,
     create_parameters,
     create_suppliers_and_manufacturers
 )
@@ -25,9 +26,10 @@ def process_database_file(api, filename, site_url=None):
         df = pd.read_csv(filename)
         logger.info(f"Processing {df.shape[0]} row(s) from {filename}")
         for i, row in df.iterrows():
-            if i > 20:
+            if i > 8:
                 break
 
+            # --------------------------------- category --------------------------------- #
             category_string = f"{row['CATEGORY']} / {row['TYPE']}"
             if pd.isna(category_string):
                 logger.error(f"Row {i} has an error in CATEGORY. Exiting.")
@@ -37,13 +39,10 @@ def process_database_file(api, filename, site_url=None):
                 logger.error(f"Failed to resolve category for row {i}: {row['CATEGORY']}")
                 quit()
 
-            part_pk = resolve_entity(api, Part, {
-                'name': row['NAME'],
-                'category': category_pk,
-                'description': row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else '',
-                'revision': row['REVISION'] if not pd.isna(row['REVISION']) else '0',
-                'virtual': str(row['TYPE']).strip().lower() in ['generic', 'critical'],
-            })
+            # ----------------------------------- part ----------------------------------- #
+            part_pk = create_part(api, row, category_pk, site_url)
+
+            create_parameters(api, row, part_pk)
 
             # create_parameters(api, row, part_generic_pk, part_specific_pks)
             # create_suppliers_and_manufacturers(api, row, part_specific_pks, stock_location_pk)
