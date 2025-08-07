@@ -6,22 +6,10 @@ import pandas as pd
 from inventree.api import InvenTreeAPI
 from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated
-from inventree.stock import StockItem, StockLocation
+from inventree.stock import StockItem
 from .entity_resolver import resolve_entity
 
 logger = logging.getLogger('InvenTreeCLI')
-
-# --- Stock Location ---
-def create_default_stock_location(api: InvenTreeAPI):
-    """Create or get the default stock location."""
-    try:
-        return resolve_entity(api, StockLocation, {
-            'name': 'Default',
-            'description': 'Default stock location for all parts'
-        })
-    except Exception as e:
-        logger.error(f"Error creating default stock location: {e}")
-        return
 
 # --- Parts ---
 def create_generic_part(api: InvenTreeAPI, row, part_subcategory_generic_pk, site_url):
