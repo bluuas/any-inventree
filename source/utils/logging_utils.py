@@ -4,6 +4,7 @@ Logging setup and log level management utilities.
 import logging
 import coloredlogs
 
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger('InvenTreeCLI')
 logger.propagate = False  # Prevent log message duplication
 
