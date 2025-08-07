@@ -9,7 +9,7 @@ from inventree.api import InvenTreeAPI
 from utils.logging_utils import logger, set_log_level
 from utils.delete_utils import delete_all
 from utils.plugin import configure, install, update
-from utils.csv_processing import process_csv_file, process_configuration_file
+from utils.csv_processing import process_database_file, process_configuration_file
 
 
 def main():
@@ -60,7 +60,7 @@ def main():
     for filename in os.listdir(csv_source_dir):
         if filename.endswith('.csv') and not filename.endswith('Configuration.csv'):
             pass
-            # process_csv_file(api, os.path.join(csv_source_dir, filename), site_url=SITE_URL)
+            process_database_file(api, os.path.join(csv_source_dir, filename), site_url=SITE_URL)
 
     # update(api)
 

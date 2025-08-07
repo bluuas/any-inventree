@@ -42,6 +42,31 @@ IDENTIFIER_LUT = {
     SupplierPart: ['SKU'],
 }
 
+def resolve_category_string(api: InvenTreeAPI, category_string: str) -> int:
+    """
+    Resolve a category string (e.g. 'Passive Component / Resistor / Metal thickfilm / generic ')
+    into the lowest-level category PK.
+    Create all not yet existing categories.
+    Ensures each category is created with the correct parent.
+    The lowest category level will have structural=False.
+    """
+    category_levels = [level.strip() for level in category_string.split('/') if level and str(level).lower() != 'nan']
+    if not category_levels:
+        logger.error(f"No valid category levels found in string: {category_string}")
+        return None
+
+    parent_pk = None
+    for idx, level in enumerate(category_levels):
+        is_last = idx == len(category_levels) - 1
+        data = {'name': level, 'structural': not is_last}
+        if parent_pk is not None:
+            data['parent'] = parent_pk
+        else:
+            data['parent'] = None
+        parent_pk = resolve_entity(api, PartCategory, data)
+
+    return parent_pk
+
 def resolve_entity(api: InvenTreeAPI, entity_type, data):
     """
     Resolve (find or create) an entity of the given type using identifier fields.
