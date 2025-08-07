@@ -23,3 +23,6 @@ def set_log_level(level: str):
         logger.error(f"Invalid log level: {level}. Defaulting to INFO.")
         logger.setLevel(logging.INFO)
         coloredlogs.set_level(level=logging.INFO)
+
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("inventree").setLevel(logging.WARNING)
