@@ -100,38 +100,43 @@ def create_parameters(api: InvenTreeAPI, row, pk):
         quit()
 
 # --- Suppliers and Manufacturers ---
-def create_suppliers_and_manufacturers(api: InvenTreeAPI, row, part_specific_pks, stock_location_pk):
+def create_suppliers_and_manufacturers(api: InvenTreeAPI, row, part_pk, stock_location_pk):
     """Create suppliers, manufacturers, and stock items for specific parts."""
     try:
-        for i in range(1, 4):
-            manufacturer_name = row[f'MANUFACTURER{i}']
-            mpn = row[f'MPN{i}']
-            supplier_name = row[f'SUPPLIER{i}']
-            if pd.isna(manufacturer_name):
-                logger.debug(f"Skipping manufacturer or supplier because it is empty")
-                continue
-            manufacturer_pk = resolve_entity(api, Company, {'name': manufacturer_name, 'is_supplier': False, 'is_manufacturer': True})
-            if manufacturer_pk and mpn and pd.notna(mpn):
-                manufacturer_part_pk = resolve_entity(api, ManufacturerPart, {
-                    'part': part_specific_pks[i-1],
-                    'manufacturer': manufacturer_pk,
-                    'MPN': mpn
-                })
+        manufacturer_name = row[f'MANUFACTURER']
+        mpn = row[f'MPN']
 
-                if pd.notna(supplier_name):
-                    supplier_pk = resolve_entity(api, Company, {'name': supplier_name, 'is_supplier': True, 'is_manufacturer': False})
-                    if supplier_pk and pd.notna(row[f'SPN{i}']):
-                        if len(part_specific_pks) >= i:
-                            supplier_part = resolve_entity(api, SupplierPart, {
-                                'part': part_specific_pks[i - 1],
-                                'supplier': supplier_pk,
-                                'SKU': row[f'SPN{i}'],
-                            })
-                            stock_pk = resolve_entity(api, StockItem, {
-                                'part': part_specific_pks[i - 1],
-                                'supplier_part': supplier_part,
-                                'quantity': 10000,
-                                'location': stock_location_pk,
-                            })
+        if pd.isna(manufacturer_name):
+            logger.debug(f"Skipping manufacturer or supplier because it is empty")
+            return
+        manufacturer_pk = resolve_entity(api, Company, {'name': manufacturer_name, 'is_supplier': False, 'is_manufacturer': True})
+        if manufacturer_pk and mpn and pd.notna(mpn):
+            resolve_entity(api, ManufacturerPart, {
+                'part': part_pk,
+                'manufacturer': manufacturer_pk,
+                'MPN': mpn
+            })
+            # Dynamically get all suppliers by checking columns that start with 'SUPPLIER' followed by a number
+            supplier_cols = [col for col in row.index if col.startswith('SUPPLIER') and col[len('SUPPLIER'):].isdigit()]
+            for supplier_col in supplier_cols:
+                i = supplier_col[len('SUPPLIER'):]
+                supplier_name = row[supplier_col]
+                if pd.isna(supplier_name):
+                    logger.debug(f"Skipping supplier {i} because it is empty")
+                    continue
+
+                supplier_pk = resolve_entity(api, Company, {'name': supplier_name, 'is_supplier': True, 'is_manufacturer': False})
+
+                supplier_part_pk = resolve_entity(api, SupplierPart, {
+                    'part': part_pk,
+                    'supplier': supplier_pk,
+                    'SKU': row.get(f'SKU{i}', None),
+                })
+                resolve_entity(api, StockItem, {
+                    'part': part_pk,
+                    'supplier_part': supplier_part_pk,
+                    'quantity': 10000,
+                    'location': stock_location_pk,
+                })
     except Exception as e:
         logger.error(f"Error processing suppliers and manufacturers: {e}")

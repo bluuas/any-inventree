@@ -43,9 +43,7 @@ def process_database_file(api, filename, site_url=None):
             part_pk = create_part(api, row, category_pk, site_url)
 
             create_parameters(api, row, part_pk)
-
-            # create_parameters(api, row, part_generic_pk, part_specific_pks)
-            # create_suppliers_and_manufacturers(api, row, part_specific_pks, stock_location_pk)
+            create_suppliers_and_manufacturers(api, row, part_pk, get_default_stock_location_pk(api))
             logger.info(f"Processed row successfully: {row['NAME']}")
     except Exception as e:
         logger.error(f"Error processing '{filename}': {e}")
