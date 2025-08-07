@@ -59,9 +59,6 @@ def process_configuration_file(api, filename):
     import re
     df = pd.read_csv(filename)
     for idx, row in df.iterrows():
-        # Create categories if CATEGORY exists
-        if 'CATEGORY' in row and pd.notna(row['CATEGORY']):
-            resolve_category_string(api, row['CATEGORY'])
         # Create parameter templates if PARAMETER exists
         if 'PARAMETER' in row and pd.notna(row['PARAMETER']) and str(row['PARAMETER']).strip():
             try:
