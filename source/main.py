@@ -62,7 +62,7 @@ def main():
             pass
             process_database_file(api, os.path.join(csv_source_dir, filename), site_url=SITE_URL)
 
-    # update(api)
+    update(api)
 
 if __name__ == "__main__":
     main()

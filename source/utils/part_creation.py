@@ -12,7 +12,7 @@ from .entity_resolver import resolve_entity
 logger = logging.getLogger('part-creation')
 logger.setLevel(logging.DEBUG)
 
-def create_part(api: InvenTreeAPI, row, part_subcategory_generic_pk, site_url):
+def create_part(api: InvenTreeAPI, row, category_pk, site_url):
     """Create a generic part and attach a datasheet."""
     name = f"{row['NAME']}"
     description = row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else ''
@@ -21,12 +21,18 @@ def create_part(api: InvenTreeAPI, row, part_subcategory_generic_pk, site_url):
 
     pk = resolve_entity(api, Part, {
         'name': name,
-        'category': part_subcategory_generic_pk,
+        'category': category_pk,
         'description': description,
         'virtual': is_virtual,
         'revision': revision,
     })
     api.patch(url=f"part/{pk}/", data={'link': f"{site_url}/part/{pk}/"})
+
+    # Patch again and update the IPN
+    designator = row['DESIGNATOR [str]'] if not pd.isna(row['DESIGNATOR [str]']) else ''
+    rev0_pk = pk  # Placeholder for revision 0 part PK
+    rev0_str = str(rev0_pk).zfill(6)
+    api.patch(url=f"part/{pk}/", data={'IPN': f"{designator}{rev0_str}-{pk}"})
 
     # Attach datasheet for specific parts, add link to itself for virtual parts
     datasheet_link = f"{site_url}/part/{pk}/" if is_virtual else row['DSLINK']
@@ -132,11 +138,11 @@ def create_suppliers_and_manufacturers(api: InvenTreeAPI, row, part_pk, stock_lo
                     'supplier': supplier_pk,
                     'SKU': row.get(f'SKU{i}', None),
                 })
-                resolve_entity(api, StockItem, {
-                    'part': part_pk,
-                    'supplier_part': supplier_part_pk,
-                    'quantity': 10000,
-                    'location': stock_location_pk,
-                })
+                # resolve_entity(api, StockItem, {
+                #     'part': part_pk,
+                #     'supplier_part': supplier_part_pk,
+                #     'quantity': 10000,
+                #     'location': stock_location_pk,
+                # })
     except Exception as e:
         logger.error(f"Error processing suppliers and manufacturers: {e}")
