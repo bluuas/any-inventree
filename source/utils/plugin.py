@@ -28,8 +28,7 @@ def fetch_kicad_categories(api: InvenTreeAPI):
     try:
         response = requests.get(f"{INVENTREE_SITE_URL}/plugin/{KICAD_PLUGIN_PK}/api/category/", headers={"Authorization": f"Token {api.token}"})
         if response.status_code == 200:
-            logger.debug(f"Fetched KiCad categories successfully. {response.json()}")
-            # Cache by category id (cat['category']['id'])
+            logger.debug(f"Fetched KiCad categories successfully. Found following categories: {response.json()}")
             kicad_category_cache = {cat['category']['id']: cat for cat in response.json() if 'category' in cat and 'id' in cat['category']}
         else:
             logger.error(f"Failed to fetch KiCad categories: {response.status_code} - {response.text}")
@@ -55,8 +54,8 @@ def add_category(api: InvenTreeAPI, category_pk: int):
             "Content-Type": "application/json"
         }
         response = requests.post(f"{INVENTREE_SITE_URL}/plugin/{KICAD_PLUGIN_PK}/api/category/", headers=HEADERS, json={'category': category_pk})
-        if response.status_code == 201:  # Assuming 201 Created is the success status
-            kicad_category_cache[category_pk] = True  # Add to cache
+        if response.status_code == 200:
+            kicad_category_cache[category_pk] = True
             logger.debug(f"Added category {category_pk} to cache and KiCAD plugin: {response.json()}")
         else:
             logger.error(f"Failed to add category {category_pk} to KiCAD plugin: {response.status_code} - {response.text}")
