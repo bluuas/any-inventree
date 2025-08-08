@@ -22,19 +22,39 @@ INVENTREE_SITE_URL = "http://inventree.localhost" #todo: get from environment va
 
 
 kicad_category_cache = {}
+def fetch_kicad_categories(api: InvenTreeAPI):
+    """Fetch and cache KiCad categories from the plugin."""
+    global kicad_category_cache
+    try:
+        response = requests.get(f"{INVENTREE_SITE_URL}/plugin/{KICAD_PLUGIN_PK}/api/category/", headers={"Authorization": f"Token {api.token}"})
+        if response.status_code == 200:
+            logger.debug(f"Fetched KiCad categories successfully. {response.json()}")
+            # Cache by category id (cat['category']['id'])
+            kicad_category_cache = {cat['category']['id']: cat for cat in response.json() if 'category' in cat and 'id' in cat['category']}
+        else:
+            logger.error(f"Failed to fetch KiCad categories: {response.status_code} - {response.text}")
+    except Exception as e:
+        logger.error(f"Error fetching KiCad categories: {e}")
+
 def add_category(api: InvenTreeAPI, category_pk: int):
+    """
+    Add a category to the KiCad plugin if not already present.
+    Fetches the cache from the API if the cache is empty.
+    """
+    global kicad_category_cache
+    # Fetch cache if empty
+    if not kicad_category_cache:
+        fetch_kicad_categories(api)
     # Check if the category is already in the cache
     if category_pk in kicad_category_cache:
         logger.debug(f"Category {category_pk} is already in the cache.")
         return
-
     try:
         HEADERS = {
             "Authorization": f"Token {api.token}",
             "Content-Type": "application/json"
         }
         response = requests.post(f"{INVENTREE_SITE_URL}/plugin/{KICAD_PLUGIN_PK}/api/category/", headers=HEADERS, json={'category': category_pk})
-
         if response.status_code == 201:  # Assuming 201 Created is the success status
             kicad_category_cache[category_pk] = True  # Add to cache
             logger.debug(f"Added category {category_pk} to cache and KiCAD plugin: {response.json()}")
