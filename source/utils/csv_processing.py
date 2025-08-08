@@ -3,6 +3,8 @@ CSV file processing logic for importing data into InvenTree.
 """
 import logging
 import pandas as pd
+
+from utils.plugin import add_category
 from .part_creation import (
     create_part,
     create_parameters,
@@ -26,7 +28,7 @@ def process_database_file(api, filename, site_url=None):
         df = pd.read_csv(filename)
         logger.info(f"Processing {df.shape[0]} row(s) from {filename}")
         for i, row in df.iterrows():
-            if i > 8:
+            if i >= 4:
                 break
 
             # --------------------------------- category --------------------------------- #
@@ -38,13 +40,20 @@ def process_database_file(api, filename, site_url=None):
             if category_pk is None:
                 logger.error(f"Failed to resolve category for row {i}: {row['CATEGORY']}")
                 quit()
-
+            if row['TYPE'] in ['generic', 'critical']:
+                # Add the generic or critical category to the KiCad plugin
+                add_category(api, category_pk)
             # ----------------------------------- part ----------------------------------- #
             part_pk = create_part(api, row, category_pk, site_url)
 
             create_parameters(api, row, part_pk)
             create_suppliers_and_manufacturers(api, row, part_pk, get_default_stock_location_pk(api))
             logger.info(f"Processed row successfully: {row['NAME']}")
+        # tbd: create all part relations
+        # resolve_entity(api, PartRelated, {
+        #     'part_1': part_generic_pk,
+        #     'part_2': part_specific_pk,
+        # })
     except Exception as e:
         logger.error(f"Error processing '{filename}': {e}")
 
@@ -53,6 +62,7 @@ def process_configuration_file(api, filename):
     Process a configuration CSV file to create all necessary part categories based on the CATEGORY hierarchy.
     """
     logger.info(f"Processing configuration file: {filename}")
+
     import json
     import re
     df = pd.read_csv(filename)
