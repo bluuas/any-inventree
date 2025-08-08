@@ -8,6 +8,7 @@ from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated
 from inventree.stock import StockItem
 from .entity_resolver import resolve_entity
+from .relation_utils import add_pending_relation
 
 logger = logging.getLogger('part-creation')
 logger.setLevel(logging.DEBUG)
@@ -50,6 +51,15 @@ def create_part(api: InvenTreeAPI, row, category_pk, site_url):
     #         'part_1': part_generic_pk,
     #         'part_2': part_specific_pk,
     #     })
+
+    # get the part relations from RELATEDPART1,RELATEDPART2,RELATEDPART3
+    for i in range(1, 4):
+        related_part = row.get(f'RELATEDPART{i}')
+        if pd.notna(related_part):
+            related_part_pk = resolve_entity(api, Part, {'name': related_part})
+            if related_part_pk is not None:
+                add_pending_relation(pk, related_part_pk)
+
     return pk
 
 # --- Parameters ---

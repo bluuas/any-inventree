@@ -13,6 +13,7 @@ from .part_creation import (
 from .stock import get_default_stock_location_pk
 from utils.entity_resolver import resolve_entity, resolve_category_string
 from inventree.part import Part, ParameterTemplate
+from .relation_utils import resolve_pending_relations
 
 logger = logging.getLogger('InvenTreeCLI')
 
@@ -54,6 +55,7 @@ def process_database_file(api, filename, site_url=None):
         #     'part_1': part_generic_pk,
         #     'part_2': part_specific_pk,
         # })
+        resolve_pending_relations(api)
     except Exception as e:
         logger.error(f"Error processing '{filename}': {e}")
 
