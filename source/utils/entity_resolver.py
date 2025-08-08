@@ -8,13 +8,9 @@ from inventree.base import Attachment
 from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated, BomItem
 from inventree.stock import StockItem, StockLocation
-try:
-    from utils.logging_utils import get_configured_level
-    log_level = get_configured_level()
-except Exception:
-    log_level = logging.INFO
+
 logger = logging.getLogger('resolver')
-logger.setLevel(log_level)
+logger.setLevel(logging.DEBUG)
 
 # Caches for entities to speed up lookups
 caches = {
@@ -40,7 +36,7 @@ IDENTIFIER_LUT = {
     ManufacturerPart: ['MPN'],
     Parameter: ['part', 'template'],
     ParameterTemplate: ['name'],
-    Part: ['name', 'category'],
+    Part: ['name', 'category', 'revision'],
     PartCategory: ['name', 'parent'],
     PartRelated: ['part_1', 'part_2'],
     StockItem: ['part', 'supplier_part'],
@@ -74,10 +70,6 @@ def resolve_category_string(api: InvenTreeAPI, category_string: str) -> int:
     return parent_pk
 
 def resolve_entity(api: InvenTreeAPI, entity_type, data):
-    """
-    Resolve (find or create) an entity of the given type using identifier fields.
-    Uses a cache to avoid redundant API calls.
-    """
     identifiers = IDENTIFIER_LUT.get(entity_type, [])
     if not identifiers:
         logger.error(f"No identifiers found for entity type: {entity_type.__name__}")
@@ -85,7 +77,7 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
 
     try:
         cache = caches[entity_type]
-        composite_key = tuple(data[identifier] for identifier in identifiers if identifier in data)
+        composite_key = tuple(str(data[identifier]) for identifier in identifiers if identifier in data)
 
         # Check cache first
         entity_id = cache.get(composite_key)
@@ -94,7 +86,10 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
             return entity_id
 
         # Fetch all entities from the API and populate the cache
-        entity_dict = {tuple(getattr(entity, identifier) for identifier in identifiers): entity.pk for entity in entity_type.list(api)}
+        entity_dict = {
+            tuple(str(getattr(entity, identifier)) for identifier in identifiers): entity.pk 
+            for entity in entity_type.list(api)
+        }
         cache.update(entity_dict)
 
         # Check again after updating the cache
