@@ -2,6 +2,7 @@
 CSV file processing logic for importing data into InvenTree.
 """
 import logging
+from utils.logging_utils import get_configured_level
 import pandas as pd
 
 from utils.plugin import add_category
@@ -15,7 +16,8 @@ from utils.entity_resolver import resolve_entity, resolve_category_string
 from inventree.part import Part, ParameterTemplate
 from .relation_utils import resolve_pending_relations
 
-logger = logging.getLogger('InvenTreeCLI')
+logger = logging.getLogger('csv-processing')
+logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
 # Example: site_url can be passed as an argument or set globally
 SITE_URL = None

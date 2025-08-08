@@ -3,6 +3,7 @@ Entity resolution and caching utilities for InvenTree entities.
 """
 
 import logging
+from utils.logging_utils import get_configured_level
 from inventree.api import InvenTreeAPI
 from inventree.base import Attachment
 from inventree.company import Company, SupplierPart, ManufacturerPart
@@ -10,7 +11,7 @@ from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, Par
 from inventree.stock import StockItem, StockLocation
 
 logger = logging.getLogger('resolver')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
 # Caches for entities to speed up lookups
 caches = {

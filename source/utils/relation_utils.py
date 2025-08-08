@@ -2,10 +2,12 @@
 Utilities for managing and resolving pending part relations after all parts are created.
 """
 import logging
+from utils.logging_utils import get_configured_level
 from utils.entity_resolver import resolve_entity
 from inventree.part import PartRelated
 
 logger = logging.getLogger('relation-utils')
+logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
 # Global list to store pending relations as tuples (part_1_pk, part_2_pk)
 _pending_relations = []

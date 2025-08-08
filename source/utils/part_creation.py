@@ -2,6 +2,7 @@
 Functions for creating categories, parts, parameters, suppliers, manufacturers, and stock locations.
 """
 import logging
+from utils.logging_utils import get_configured_level
 import pandas as pd
 from inventree.api import InvenTreeAPI
 from inventree.company import Company, SupplierPart, ManufacturerPart
@@ -11,7 +12,7 @@ from .entity_resolver import resolve_entity
 from .relation_utils import add_pending_relation
 
 logger = logging.getLogger('part-creation')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
 def create_part(api: InvenTreeAPI, row, category_pk, site_url):
     """Create a generic part and attach a datasheet."""
