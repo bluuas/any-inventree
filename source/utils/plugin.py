@@ -6,8 +6,10 @@ from inventree.api import InvenTreeAPI
 from inventree.part import ParameterTemplate
 from inventree.plugin import InvenTreePlugin
 from .entity_resolver import resolve_entity
+import requests
 
-logger = logging.getLogger('InvenTreeCLI')
+logger = logging.getLogger('kicad-plugin')
+logger.setLevel(logging.DEBUG)
 
 INVENTREE_GLOBAL_SETTINGS = {
     "ENABLE_PLUGINS_URL": True,
@@ -16,6 +18,31 @@ INVENTREE_GLOBAL_SETTINGS = {
 }
 
 KICAD_PLUGIN_PK = "kicad-library-plugin"
+INVENTREE_SITE_URL = "http://inventree.localhost" #todo: get from environment variable
+
+
+kicad_category_cache = {}
+def add_category(api: InvenTreeAPI, category_pk: int):
+    # Check if the category is already in the cache
+    if category_pk in kicad_category_cache:
+        logger.debug(f"Category {category_pk} is already in the cache.")
+        return
+
+    try:
+        HEADERS = {
+            "Authorization": f"Token {api.token}",
+            "Content-Type": "application/json"
+        }
+        response = requests.post(f"{INVENTREE_SITE_URL}/plugin/{KICAD_PLUGIN_PK}/api/category/", headers=HEADERS, json={'category': category_pk})
+
+        if response.status_code == 201:  # Assuming 201 Created is the success status
+            kicad_category_cache[category_pk] = True  # Add to cache
+            logger.debug(f"Added category {category_pk} to cache and KiCAD plugin: {response.json()}")
+        else:
+            logger.error(f"Failed to add category {category_pk} to KiCAD plugin: {response.status_code} - {response.text}")
+    except Exception as e:
+        logger.error(f"Error adding generic part category to KiCAD plugin: {e}")
+        
 
 def configure(api: InvenTreeAPI):
     """Configure global settings for InvenTree."""
