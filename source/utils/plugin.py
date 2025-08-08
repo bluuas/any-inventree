@@ -44,9 +44,7 @@ def add_category(api: InvenTreeAPI, category_pk: int):
     # Fetch cache if empty
     if not kicad_category_cache:
         fetch_kicad_categories(api)
-    # Check if the category is already in the cache
     if category_pk in kicad_category_cache:
-        logger.debug(f"Category {category_pk} is already in the cache.")
         return
     try:
         HEADERS = {
@@ -61,7 +59,6 @@ def add_category(api: InvenTreeAPI, category_pk: int):
             logger.error(f"Failed to add category {category_pk} to KiCAD plugin: {response.status_code} - {response.text}")
     except Exception as e:
         logger.error(f"Error adding generic part category to KiCAD plugin: {e}")
-        
 
 def configure(api: InvenTreeAPI):
     """Configure global settings for InvenTree."""
