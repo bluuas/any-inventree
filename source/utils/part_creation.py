@@ -32,7 +32,7 @@ def create_part(api: InvenTreeAPI, row, category_pk, site_url):
 
     # Patch again and update the IPN
     designator = row['DESIGNATOR [str]'] if not pd.isna(row['DESIGNATOR [str]']) else ''
-    rev0_pk = pk  # Placeholder for revision 0 part PK
+    rev0_pk = pk  # Placeholder for revision 0 part PK, TODO
     rev0_str = str(rev0_pk).zfill(6)
     api.patch(url=f"part/{pk}/", data={'IPN': f"{designator}{rev0_str}-{pk}"})
 
@@ -45,22 +45,11 @@ def create_part(api: InvenTreeAPI, row, category_pk, site_url):
         'model_id': pk,
     })
 
-    # to be done: challenge: while creating the generic parts, the specific parts are not yet created -> they don't have a pk
-    # for virtual parts, create the part relations.
-    # if is_virtual:
-    #     resolve_entity(api, PartRelated, {
-    #         'part_1': part_generic_pk,
-    #         'part_2': part_specific_pk,
-    #     })
-
     # get the part relations from RELATEDPART1,RELATEDPART2,RELATEDPART3
     for i in range(1, 4):
         related_part = row.get(f'RELATEDPART{i}')
-        if pd.notna(related_part):
-            related_part_pk = resolve_entity(api, Part, {'name': related_part})
-            if related_part_pk is not None:
-                add_pending_relation(pk, related_part_pk)
-
+        if pd.notna(related_part) and related_part != '':
+            add_pending_relation(pk, related_part)
     return pk
 
 # --- Parameters ---
