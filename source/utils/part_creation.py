@@ -5,6 +5,7 @@ import logging
 from utils.logging_utils import get_configured_level
 import pandas as pd
 from inventree.api import InvenTreeAPI
+from inventree.base import Attachment
 from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated
 from inventree.stock import StockItem
@@ -28,6 +29,7 @@ def create_part(api: InvenTreeAPI, row, category_pk, site_url):
         'virtual': is_virtual,
         'revision': revision,
     })
+    # TODO: try to reduce the number of API calls here. Usually, if I run the script multiple times, the part already exists and the link is already set.
     api.patch(url=f"part/{pk}/", data={'link': f"{site_url}/part/{pk}/"})
 
     # Patch again and update the IPN
@@ -38,7 +40,7 @@ def create_part(api: InvenTreeAPI, row, category_pk, site_url):
 
     # Attach datasheet for specific parts, add link to itself for virtual parts
     datasheet_link = f"{site_url}/part/{pk}/" if is_virtual else row['DSLINK']
-    api.post(url="attachment/", data={
+    resolve_entity(api, Attachment, {
         'link': datasheet_link,
         'comment': 'datasheet',
         'model_type': 'part',

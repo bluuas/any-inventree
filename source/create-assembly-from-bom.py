@@ -6,7 +6,7 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 import argparse
-from utils.utils import resolve_entity
+from .utils.entity_resolver import resolve_entity
 
 import logging
 import coloredlogs

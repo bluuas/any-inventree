@@ -31,7 +31,7 @@ caches = {
 
 # Lookup Table for identifiers per entity type
 IDENTIFIER_LUT = {
-    Attachment: ['filename', 'model_id'],
+    Attachment: ['link', 'model_id'],
     BomItem: ['part', 'sub_part'],
     Company: ['name'],
     ManufacturerPart: ['MPN'],
