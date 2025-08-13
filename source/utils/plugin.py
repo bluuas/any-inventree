@@ -106,11 +106,13 @@ def update(api: InvenTreeAPI):
     symbol_pk = resolve_entity(api, ParameterTemplate, {'name': 'SYMBOL'})
     designator_pk = resolve_entity(api, ParameterTemplate, {'name': 'DESIGNATOR'})
     value_pk = resolve_entity(api, ParameterTemplate, {'name': 'VALUE'})
+    visibility_pk = resolve_entity(api, ParameterTemplate, {'name': 'KICAD_VISIBILITY'})
     settings = {
         'KICAD_FOOTPRINT_PARAMETER': footprint_pk,
         'KICAD_SYMBOL_PARAMETER': symbol_pk,
         'KICAD_REFERENCE_PARAMETER': designator_pk,
         'KICAD_VALUE_PARAMETER': value_pk,
+        'KICAD_FIELD_VISIBILITY_PARAMETER': visibility_pk,
     }
     try:
         for key, value in settings.items():
