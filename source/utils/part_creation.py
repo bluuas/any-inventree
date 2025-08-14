@@ -12,11 +12,12 @@ from inventree.stock import StockItem
 from .entity_resolver import resolve_entity
 from .relation_utils import add_pending_relation
 from .error_codes import ErrorCodes
+from .config import get_site_url
 
 logger = logging.getLogger('part-creation')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
-def create_part(api: InvenTreeAPI, row, category_pk, site_url):
+def create_part(api: InvenTreeAPI, row, category_pk):
     """
     Create a generic part and attach a datasheet.
     Returns (part_pk, error_code).
@@ -45,6 +46,7 @@ def create_part(api: InvenTreeAPI, row, category_pk, site_url):
             
         # Update part link and IPN
         try:
+            site_url = get_site_url()
             api.patch(url=f"part/{pk}/", data={'link': f"{site_url}/part/{pk}/"})
             
             designator = row['DESIGNATOR [str]'] if not pd.isna(row['DESIGNATOR [str]']) else ''
