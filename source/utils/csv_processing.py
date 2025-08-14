@@ -31,7 +31,7 @@ def process_database_file(api, filename, site_url=None):
         df = pd.read_csv(filename)
         logger.info(f"Processing {df.shape[0]} row(s) from {filename}")
         for i, row in df.iterrows():
-            if i >= 80:
+            if i >= 12:
                 break
 
             # --------------------------------- category --------------------------------- #
