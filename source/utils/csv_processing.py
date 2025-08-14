@@ -28,9 +28,10 @@ def process_database_file(api, filename):
     """
     # Initialize KiCad plugin for category management
     kicad_plugin = KiCadPlugin(api)
-        
+
     try:
-        df = pd.read_csv(filename)
+        # Ensure all columns are read as strings to prevent e.g. "0402" being interpreted as 402
+        df = pd.read_csv(filename, dtype=str)
         logger.info(f"Processing {df.shape[0]} row(s) from {filename}")
     except Exception as e:
         logger.error(f"Error reading CSV file {filename}: {e}")
@@ -90,7 +91,7 @@ def process_configuration_file(api, filename):
 
     import json
     import re
-    df = pd.read_csv(filename)
+    df = pd.read_csv(filename, dtype=str)
     for idx, row in df.iterrows():
         # Create parameter templates if PARAMETER exists
         if 'PARAMETER' in row and pd.notna(row['PARAMETER']) and str(row['PARAMETER']).strip():
