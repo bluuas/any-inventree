@@ -20,10 +20,7 @@ from .error_codes import ErrorCodes
 logger = logging.getLogger('csv-processing')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
-# Example: site_url can be passed as an argument or set globally
-SITE_URL = None
-
-def process_database_file(api, filename, site_url=None):
+def process_database_file(api, filename):
     """
     Process a CSV file and create parts, parameters, suppliers, etc.
     Assumes categories are already created from configuration.
@@ -56,7 +53,7 @@ def process_database_file(api, filename, site_url=None):
             add_category(api, category_pk)
             
         # ----------------------------------- part ----------------------------------- #
-        part_pk, error_code = create_part(api, row, category_pk, site_url)
+        part_pk, error_code = create_part(api, row, category_pk)
         if error_code != ErrorCodes.SUCCESS:
             logger.error(f"Failed to create part for row {i}: {row['NAME']}")
             return ErrorCodes.PART_CREATION_ERROR
