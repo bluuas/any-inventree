@@ -4,15 +4,15 @@ Active Component / Integrated Circuit / Analogue MUX,AEM Components,"{""name"": 
 Active Component / Integrated Circuit / Analogue Switch,Alpha Electronics Corp.,"{""name"": ""ESRMAX"", ""units"": ""Ω""}",X7S,,,OBSOLETE,specific,6,THR,RoHS2 2017/2102,0603,FARNELL,PUS-IN
 Active Component / Integrated Circuit / Analogue to Digital Converter,Aluminum Electrolytic & Film Specialists,"{""name"": ""HEIGHT"", ""units"": ""mm""}",X7R,,,,,6,,RoHS3 2015/863,0805,,RING-LUG
 Active Component / Integrated Circuit / Logic Gate,Amphenol Corporation,"{""name"": ""IMAX"", ""units"": ""A""}",X5R,,,,,6,,RoHS Exemption,1206,,
-Active Component / Integrated Circuit / General Digital Circuit,Analog Devices (ADI),"{""name"": ""LIFETIME"", ""units"": ""h@K"" }",X6S,,,,,6,,,1210,,
+Active Component / Integrated Circuit / General Digital Circuit,Analog Devices (ADI),"{""name"": ""LIFETIME"", ""units"": ""h@K"" }",X6S,,,,,6,,"-",1210,,
 Active Component / Integrated Circuit / Shift Register,Bel Fuse Inc.,"{""name"": ""PACKAGE"", ""choices"": $PACKAGE }",Z5U,,,,,6,,,1812,,
 Active Component / Integrated Circuit / Voltage reference,Bourns Inc.,"{""name"": ""PMAX"", ""units"": ""W"" }",Y5V,,,,,6,,,2010,,
 Active Component / Integrated Circuit / DC-DC-Converter / Linear regulator,Broad Portfolio / General Purpose & Power Diodes,"{""name"": ""RESISTANCE"", ""units"": ""Ω"" }",Polyester,,,,,6,,,2512,,
 Active Component / Integrated Circuit / Supervisory (WDT),Broadcom Inc.,"{""name"": ""SOLDER_TECHNOLOGY"", ""choices"": $SOLDER_TECHNOLOGY}",Tantalum,,,,,6,,,SOT23-3,,
 Active Component / Integrated Circuit / General analog circuit,Caddock Electronics Inc.,"{""name"": ""SUBSTANCES"", ""choices"": $SUBSTANCES}",Niobium,,,,,6,,,SOT23-5,,
 Active Component / Transistor / Bipolar ( P ≤ 1W ),Cal-Chip Electronics Inc.,"{""name"": ""TCORNER"", ""units"": ""°C"" }",,,,,,7,,,SOT23-6,,
-Active Component / Transistor / Bipolar ( P > 1W ),Central Semiconductor Corp.,"{""name"": ""TMAX"", ""units"": ""°C"" }",,,,,,7,,,,,
-Active Component / Transistor / MOS ( P > 1W ),Cornell Dubilier Electronics,"{""name"": ""TMIN"", ""units"": ""°C"" }",,,,,,7,,,,,
+Active Component / Transistor / Bipolar ( P > 1W ),Central Semiconductor Corp.,"{""name"": ""TMAX"", ""units"": ""°C"" }",,,,,,7,,,DO-214AC,,
+Active Component / Transistor / MOS ( P > 1W ),Cornell Dubilier Electronics,"{""name"": ""TMIN"", ""units"": ""°C"" }",,,,,,7,,,SOD-123FL,,
 Active Component / Transistor / MOS ( P ≤ 1W ),Coherent Corp.,"{""name"": ""TOLERANCE"", ""units"": ""%"" }",,,,,,7,,,,,
 Active Component / Diode / Universal ( P ≤ 1W ),Diodes Incorporated,"{""name"": ""TYPE"", ""choices"": $TYPE}",,,,,,7,,,,,
 Active Component / Diode / Schottky ( P ≤ 1W ),Eaton - Electronics Division,"{""name"": ""VMAX"", ""units"": ""V"" }",,,,,,7,,,,,
