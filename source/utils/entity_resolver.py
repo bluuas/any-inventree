@@ -11,7 +11,7 @@ from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, Par
 from inventree.stock import StockItem, StockLocation
 from .error_codes import ErrorCodes
 
-logger = logging.getLogger('resolver')
+logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
 # Caches for entities to speed up lookups

@@ -9,7 +9,7 @@ from .entity_resolver import resolve_entity
 from .config import Config
 import requests
 
-logger = logging.getLogger('kicad-plugin')
+logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(logging.DEBUG)
 
 INVENTREE_GLOBAL_SETTINGS = {

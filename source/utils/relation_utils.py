@@ -7,7 +7,7 @@ from utils.entity_resolver import resolve_entity
 from inventree.part import Part, PartRelated
 from .error_codes import ErrorCodes
 
-logger = logging.getLogger('relation-utils')
+logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
 # Global list to store pending relations as tuples (part_1_pk, part_2_pk)

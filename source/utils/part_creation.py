@@ -14,7 +14,7 @@ from .relation_utils import add_pending_relation
 from .error_codes import ErrorCodes
 from .config import get_site_url
 
-logger = logging.getLogger('part-creation')
+logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
 def create_part(api: InvenTreeAPI, row, category_pk):

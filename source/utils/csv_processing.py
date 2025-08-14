@@ -17,7 +17,7 @@ from inventree.part import Part, ParameterTemplate
 from .relation_utils import resolve_pending_relations
 from .error_codes import ErrorCodes
 
-logger = logging.getLogger('csv-processing')
+logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
 def process_database_file(api, filename):

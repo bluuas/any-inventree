@@ -7,7 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import logging
 
-logger = logging.getLogger('config')
+logger = logging.getLogger('InvenTreeCLI')
 
 # Find and load the top-level .env file
 def _load_env_file():
