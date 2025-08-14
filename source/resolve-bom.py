@@ -5,9 +5,9 @@ import argparse
 import logging
 import pprint
 import pandas as pd
-from dotenv import load_dotenv
 import coloredlogs
 from utils.error_codes import ErrorCodes
+from utils.config import Config
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG', logger=logger)
@@ -112,16 +112,14 @@ def main():
     parser.add_argument('-f', '--file', required=True, help='Path to the BOM file (CSV format)')
     
     try:
-        load_dotenv()
-        API_URL = os.getenv("INVENTREE_API_URL")
-        API_USERNAME = os.getenv("INVENTREE_USERNAME")
-        API_PASSWORD = os.getenv("INVENTREE_PASSWORD")
-        
-        if not all([API_URL, API_USERNAME, API_PASSWORD]):
-            logger.error("Missing required environment variables. Check INVENTREE_API_URL, INVENTREE_USERNAME, INVENTREE_PASSWORD")
+        # Validate required configuration
+        missing_vars = Config.validate_required()
+        if missing_vars:
+            logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
             return ErrorCodes.CONFIGURATION_ERROR
             
-        api = InvenTreeAPI(API_URL, username=API_USERNAME, password=API_PASSWORD)
+        credentials = Config.get_api_credentials()
+        api = InvenTreeAPI(credentials['url'], username=credentials['username'], password=credentials['password'])
         args = parser.parse_args()
         
         df, error_code = process_bom_file(api, args.file)
