@@ -64,6 +64,8 @@ def process_database_file(api, filename, site_url=None):
 def process_configuration_file(api, filename):
     """
     Process a configuration CSV file to create all necessary part categories based on the CATEGORY hierarchy.
+    A Parameter can have references to other columns in the CSV file, for example when choices are defined.
+    In this case, the referenced column name is prefixed with a $ sign and the values from that column are inserted as comma-separated choices.
     """
     logger.info(f"Processing configuration file: {filename}")
 
