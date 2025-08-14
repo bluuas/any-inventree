@@ -43,8 +43,8 @@ class Config:
     
     # InvenTree API Configuration
     INVENTREE_API_URL = os.getenv("INVENTREE_API_URL", "http://inventree.localhost/api")
-    INVENTREE_USERNAME = os.getenv("INVENTREE_USERNAME")
-    INVENTREE_PASSWORD = os.getenv("INVENTREE_PASSWORD")
+    INVENTREE_ADMIN_USER = os.getenv("INVENTREE_ADMIN_USER")
+    INVENTREE_ADMIN_PASSWORD = os.getenv("INVENTREE_ADMIN_PASSWORD")
     INVENTREE_SITE_URL = os.getenv("INVENTREE_SITE_URL", "http://inventree.localhost")
     
     # Database Configuration
@@ -69,8 +69,8 @@ class Config:
         """
         required_vars = [
             ('INVENTREE_API_URL', cls.INVENTREE_API_URL),
-            ('INVENTREE_USERNAME', cls.INVENTREE_USERNAME),
-            ('INVENTREE_PASSWORD', cls.INVENTREE_PASSWORD),
+            ('INVENTREE_ADMIN_USER', cls.INVENTREE_ADMIN_USER),
+            ('INVENTREE_ADMIN_PASSWORD', cls.INVENTREE_ADMIN_PASSWORD),
         ]
         
         missing = []
@@ -90,8 +90,8 @@ class Config:
         """Get API credentials as a dictionary."""
         return {
             'url': cls.INVENTREE_API_URL,
-            'username': cls.INVENTREE_USERNAME,
-            'password': cls.INVENTREE_PASSWORD
+            'username': cls.INVENTREE_ADMIN_USER,
+            'password': cls.INVENTREE_ADMIN_PASSWORD
         }
     
     @classmethod
@@ -100,8 +100,8 @@ class Config:
         print("=== InvenTree Configuration ===")
         print(f"API URL: {cls.INVENTREE_API_URL}")
         print(f"Site URL: {cls.INVENTREE_SITE_URL}")
-        print(f"Username: {cls.INVENTREE_USERNAME}")
-        print(f"Password: {'*' * len(cls.INVENTREE_PASSWORD) if cls.INVENTREE_PASSWORD else 'Not set'}")
+        print(f"Username: {cls.INVENTREE_ADMIN_USER}")
+        print(f"Password: {'*' * len(cls.INVENTREE_ADMIN_PASSWORD) if cls.INVENTREE_ADMIN_PASSWORD else 'Not set'}")
         print(f"Debug: {cls.DEBUG}")
         print(f"Log Level: {cls.LOG_LEVEL}")
         print("=" * 30)
