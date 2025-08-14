@@ -5,7 +5,7 @@ import logging
 from utils.logging_utils import get_configured_level
 import pandas as pd
 
-from utils.plugin import add_category
+from utils.plugin import KiCadPlugin
 from .part_creation import (
     create_part,
     create_parameters,
@@ -26,6 +26,9 @@ def process_database_file(api, filename):
     Assumes categories are already created from configuration.
     Returns error code.
     """
+    # Initialize KiCad plugin for category management
+    kicad_plugin = KiCadPlugin(api)
+        
     try:
         df = pd.read_csv(filename)
         logger.info(f"Processing {df.shape[0]} row(s) from {filename}")
@@ -50,7 +53,7 @@ def process_database_file(api, filename):
             
         if row['TYPE'] in ['generic', 'critical']:
             # Add the generic or critical category to the KiCad plugin
-            add_category(api, category_pk)
+            kicad_plugin.add_category(category_pk)
             
         # ----------------------------------- part ----------------------------------- #
         part_pk, error_code = create_part(api, row, category_pk)

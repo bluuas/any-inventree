@@ -8,7 +8,7 @@ from inventree.api import InvenTreeAPI
 # Import refactored utilities
 from utils.logging_utils import logger, set_log_level
 from utils.delete_utils import delete_all
-from utils.plugin import configure, install, update
+from utils.plugin import KiCadPlugin
 from utils.csv_processing import process_database_file, process_configuration_file
 
 
@@ -39,8 +39,9 @@ def main():
         return
 
     # Install and configure the KiCad plugin
-    configure(api)
-    install(api)
+    plugin = KiCadPlugin(api)
+    plugin.configure_global_settings()
+    plugin.install()
 
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -62,7 +63,7 @@ def main():
             pass
             process_database_file(api, os.path.join(csv_source_dir, filename), site_url=SITE_URL)
 
-    update(api)
+    plugin.update_settings()
 
 if __name__ == "__main__":
     main()
