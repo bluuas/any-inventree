@@ -6,7 +6,10 @@ from .entity_resolver import resolve_entity
 logger = logging.getLogger('InvenTreeCLI')
 
 def get_default_stock_location_pk(api: InvenTreeAPI) -> int:
-    """Create or get the default stock location."""
+    """
+    Create or get the default stock location.
+    Returns stock location PK or None on failure.
+    """
     try:
         return resolve_entity(api, StockLocation, {
             'name': 'Default',
@@ -14,4 +17,4 @@ def get_default_stock_location_pk(api: InvenTreeAPI) -> int:
         })
     except Exception as e:
         logger.error(f"Error creating default stock location: {e}")
-        return
+        return None

@@ -9,6 +9,7 @@ from inventree.base import Attachment
 from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated, BomItem
 from inventree.stock import StockItem, StockLocation
+from .error_codes import ErrorCodes
 
 logger = logging.getLogger('resolver')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
@@ -45,32 +46,44 @@ IDENTIFIER_LUT = {
     SupplierPart: ['SKU'],
 }
 
-def resolve_category_string(api: InvenTreeAPI, category_string: str) -> int:
+def resolve_category_string(api: InvenTreeAPI, category_string: str) -> tuple:
     """
     Resolve a category string (e.g. 'Passive Component / Resistor / Metal thickfilm / generic ')
     into the lowest-level category PK.
     Create all not yet existing categories.
     Ensures each category is created with the correct parent.
     The lowest category level will have structural=False.
+    Returns (category_pk, error_code).
     """
-    category_levels = [level.strip() for level in category_string.split('/') if level and str(level).lower() != 'nan']
-    if not category_levels:
-        logger.error(f"No valid category levels found in string: {category_string}")
-        return None
+    try:
+        category_levels = [level.strip() for level in category_string.split('/') if level and str(level).lower() != 'nan']
+        if not category_levels:
+            logger.error(f"No valid category levels found in string: {category_string}")
+            return None, ErrorCodes.INVALID_DATA
 
-    parent_pk = None
-    for idx, level in enumerate(category_levels):
-        is_last = idx == len(category_levels) - 1
-        data = {'name': level, 'structural': not is_last}
-        if parent_pk is not None:
-            data['parent'] = parent_pk
-        else:
-            data['parent'] = None
-        parent_pk = resolve_entity(api, PartCategory, data)
+        parent_pk = None
+        for idx, level in enumerate(category_levels):
+            is_last = idx == len(category_levels) - 1
+            data = {'name': level, 'structural': not is_last}
+            if parent_pk is not None:
+                data['parent'] = parent_pk
+            else:
+                data['parent'] = None
+            parent_pk = resolve_entity(api, PartCategory, data)
+            if parent_pk is None:
+                logger.error(f"Failed to create/resolve category: {level}")
+                return None, ErrorCodes.ENTITY_CREATION_FAILED
 
-    return parent_pk
+        return parent_pk, ErrorCodes.SUCCESS
+    except Exception as e:
+        logger.error(f"Error resolving category string '{category_string}': {e}")
+        return None, ErrorCodes.API_ERROR
 
 def resolve_entity(api: InvenTreeAPI, entity_type, data):
+    """
+    Resolve an entity by checking cache first, then API, then creating if needed.
+    Returns entity PK or None on failure.
+    """
     identifiers = IDENTIFIER_LUT.get(entity_type, [])
     if not identifiers:
         logger.error(f"No identifiers found for entity type: {entity_type.__name__}")
@@ -87,11 +100,16 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
             return entity_id
 
         # Fetch all entities from the API and populate the cache
-        entity_dict = {
-            tuple(str(getattr(entity, identifier)) for identifier in identifiers): entity.pk 
-            for entity in entity_type.list(api)
-        }
-        cache.update(entity_dict)
+        try:
+            entities = entity_type.list(api)
+            entity_dict = {
+                tuple(str(getattr(entity, identifier)) for identifier in identifiers): entity.pk 
+                for entity in entities
+            }
+            cache.update(entity_dict)
+        except Exception as e:
+            logger.error(f"Error fetching {entity_type.__name__} entities from API: {e}")
+            return None
 
         # Check again after updating the cache
         entity_id = cache.get(composite_key)
@@ -100,13 +118,17 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
             return entity_id
 
         # Create new entity if not found
-        new_entity = entity_type.create(api, data)
-        logger.debug(f"{entity_type.__name__} '{composite_key}' created successfully at ID: {new_entity.pk}")
-        cache[composite_key] = new_entity.pk
-        return new_entity.pk
+        try:
+            new_entity = entity_type.create(api, data)
+            logger.debug(f"{entity_type.__name__} '{composite_key}' created successfully at ID: {new_entity.pk}")
+            cache[composite_key] = new_entity.pk
+            return new_entity.pk
+        except Exception as e:
+            logger.error(f"Error creating new {entity_type.__name__} entity '{composite_key}': {e}")
+            return None
 
     except Exception as e:
-        logger.error(f"Error resolving entity for {entity_type.__name__} '{composite_key}': {e}")
+        logger.error(f"Error resolving entity for {entity_type.__name__}: {e}")
         return None
 
 def clear_entity_caches():
