@@ -69,15 +69,15 @@ def create_part(api: InvenTreeAPI, row, category_pk):
         except Exception as e:
             logger.warning(f"Failed to create attachment for part {pk}: {e}")
 
-        # get the part relations from RELATEDPART1,RELATEDPART2,RELATEDPART3
+        # get the part relations from RELATEDPARTS (comma separated string)
         try:
-            for i in range(1, 4):
-                related_part = row.get(f'RELATEDPART{i}')
-                if pd.notna(related_part) and related_part != '':
+            related_parts_str = row.get('RELATEDPARTS')
+            if pd.notna(related_parts_str) and related_parts_str:
+                related_parts = [p.strip() for p in related_parts_str.split(',') if p.strip()]
+                for related_part in related_parts:
                     add_pending_relation(pk, related_part)
         except Exception as e:
             logger.warning(f"Failed to add pending relations for part {pk}: {e}")
-            
         return pk, ErrorCodes.SUCCESS
         
     except Exception as e:
