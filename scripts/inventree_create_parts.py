@@ -17,37 +17,6 @@ from inventree.api import InvenTreeAPI
 
 logger = logging.getLogger('InvenTreeCLI')
 
-def setup_inventree(args):
-    """Setup InvenTree with plugins and configuration."""
-    try:
-        # Validate configuration
-        missing_vars = Config.validate_required()
-        if missing_vars:
-            logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
-            return None
-            
-        # Print configuration for debugging
-        if args.verbose:
-            Config.print_config()
-            
-        # Initialize API
-        credentials = Config.get_api_credentials()
-        api = InvenTreeAPI(credentials['url'], username=credentials['username'], password=credentials['password'])
-        
-        # Setup KiCad plugin
-        logger.info("Setting up KiCad plugin...")
-        kicad_plugin = KiCadPlugin(api)
-        kicad_plugin.configure_global_settings()
-        kicad_plugin.install()
-        kicad_plugin.update_settings()
-        logger.info("KiCad plugin setup completed.")
-        
-        return api
-        
-    except Exception as e:
-        logger.error(f"Error setting up InvenTree: {e}")
-        return None
-
 def main():
     parser = argparse.ArgumentParser(description="InvenTree Management CLI")
     parser.add_argument('--directory', help='Directory containing CSV files to process, relative to main.py')
