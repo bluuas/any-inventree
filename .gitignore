@@ -64,6 +64,7 @@ data.json
 .DS_Store
 
 # https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
+.github/*
 .vscode/*
 #!.vscode/settings.json
 !.vscode/tasks.json
