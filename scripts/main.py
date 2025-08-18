@@ -50,7 +50,7 @@ def setup_inventree(args):
 
 def main():
     parser = argparse.ArgumentParser(description="InvenTree Management CLI")
-    parser.add_argument('--directory', help='Directory containing CSV files to process')
+    parser.add_argument('--directory', help='Directory containing CSV files to process, relative to main.py')
     parser.add_argument('--delete-all', action='store_true', help='Delete all parts and entities')
     parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
     parser.add_argument('--verbose', action='store_true', help='Print configuration details')
