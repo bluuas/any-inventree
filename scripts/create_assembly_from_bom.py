@@ -5,9 +5,9 @@ from inventree.part import Part, PartCategory, BomItem
 import os
 import pandas as pd
 import argparse
-from .utils.entity_resolver import resolve_entity
-from .utils.error_codes import ErrorCodes
-from .utils.config import Config
+from utils.entity_resolver import resolve_entity
+from utils.error_codes import ErrorCodes
+from utils.config import Config
 
 import logging
 import coloredlogs

@@ -95,28 +95,53 @@ source .venv/bin/activate
 
 Once the virtual environment is activated, install the required packages listed in `requirements.txt`
 ```bash
-pip install -r requirements.txt
+pip install -r scripts/requirements.txt
 ```
 
-### Create an InvenTree API Token
+## Usage
 
-To create an InvenTree API Token, navigate to the following URL in your web browser:
+### Create Parts from CSV
 
-[http://inventree.localhost/admin/users/apitoken/add/](http://inventree.localhost/admin/users/apitoken/add/)
+Process CSV files to create parts, categories, parameters, and suppliers:
 
-Follow the instructions to generate your API token.
-
-### Insert the API Token in the .env File
-
-After generating your API token, insert it into the `.env` file located in the `./scripts/` directory. The file should look like this:
-
-```env
-# InvenTree
-INVENTREE_API_TOKEN=inv-123456789
+```bash
+cd scripts
+python inventree_create_parts.py --directory ../data --log-level INFO --verbose
 ```
 
-Make sure to replace `inv-123456789` with your actual API token.
+### Delete All Data
 
+To clean up the database (use with caution):
+
+```bash
+cd scripts
+python inventree_create_parts.py --delete-all --log-level INFO
+```
+
+### Resolve BOM Substitutes
+
+Process a BOM file to resolve part relations and substitutes:
+
+```bash
+cd scripts
+python resolve_bom.py -f /path/to/bom.csv
+```
+
+### Create Assembly from BOM
+
+Create an assembly part with BOM items from a CSV file:
+
+```bash
+cd scripts
+python create_assembly_from_bom.py -f /path/to/bom.csv
+```
+
+### Command Line Options
+
+- `--log-level`: Set logging level (DEBUG, INFO, WARNING, ERROR)
+- `--verbose`: Print configuration details
+- `--directory`: Directory containing CSV files to process
+- `--delete-all`: Delete all parts and entities (use with caution)
 
 ### Deactivate the Virtual Environment
 

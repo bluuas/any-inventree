@@ -70,7 +70,7 @@ def main():
         
         # Then process all other CSV files
         for filename in os.listdir(csv_source_dir):
-            if filename.endswith('.csv') and not filename.endswith('Configuration.csv'):
+            if filename.endswith('.csv') and not filename.endswith('configuration.csv'):
                 process_database_file(api, os.path.join(csv_source_dir, filename))
     
     # Update plugin settings at the end

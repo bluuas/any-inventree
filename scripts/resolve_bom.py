@@ -3,7 +3,6 @@ from inventree.part import PartRelated
 import os
 import argparse
 import logging
-import pprint
 import pandas as pd
 import coloredlogs
 from utils.error_codes import ErrorCodes

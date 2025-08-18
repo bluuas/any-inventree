@@ -38,7 +38,7 @@ def process_database_file(api, filename):
         return ErrorCodes.FILE_ERROR
         
     for i, row in df.iterrows():
-        if i >= 12:
+        if i >= 400:
             break
 
         # --------------------------------- category --------------------------------- #

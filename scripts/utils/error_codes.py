@@ -47,3 +47,24 @@ class ErrorCodes:
     
     # Part creation composite errors (100-109)
     PART_CREATION_ERROR = 100
+    
+    @classmethod
+    def get_description(cls, error_code):
+        """Get human-readable description for error code."""
+        descriptions = {
+            cls.SUCCESS: "Operation completed successfully",
+            cls.API_ERROR: "API communication error",
+            cls.CONFIGURATION_ERROR: "Configuration error",
+            cls.FILE_ERROR: "File operation error",
+            cls.INVALID_DATA: "Invalid data provided",
+            cls.ENTITY_CREATION_FAILED: "Failed to create entity",
+            cls.CATEGORY_ERROR: "Category operation error",
+            cls.PART_CREATION_ERROR: "Part creation error",
+            cls.PARAMETER_ERROR: "Parameter operation error",
+            cls.SUPPLIER_ERROR: "Supplier/manufacturer operation error",
+            cls.RELATIONS_ERROR: "Part relations error",
+            cls.INVALID_NAME: "Invalid name provided",
+            cls.INVALID_ASSEMBLY_DATA: "Invalid assembly data",
+            cls.BOM_PROCESSING_ERROR: "BOM processing error",
+        }
+        return descriptions.get(error_code, f"Unknown error code: {error_code}")
