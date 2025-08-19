@@ -13,6 +13,8 @@ from .entity_resolver import resolve_entity
 from .relation_utils import add_pending_relation
 from .error_codes import ErrorCodes
 from .config import get_site_url
+from .value_parser import parse_parameter_value
+import re
 
 logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
@@ -121,22 +123,18 @@ def create_parameters(api: InvenTreeAPI, row, pk):
                     'name': parameter_name,
                 })
                 if parameter_template_pk is None:
-                    logger.error(f"Parameter template not found for '{parameter_name}'. Skipping.")
+                    logger.error(f"Parameter template not found for '{parameter_name}' Unit: {parameter_unit}. Skipping.")
                     continue
 
-                parameter_value = row[parameter]
-                # If parameter_value is NaN, replace with a dash
-                if pd.isna(parameter_value):
-                    parameter_value = '-'
-                # If parameter_value is a string and contains the unit, strip it
-                elif isinstance(parameter_value, str) and parameter_unit and parameter_value.endswith(parameter_unit):
-                    parameter_value = parameter_value[: -len(parameter_unit)].strip()
+                # Parse parameter value with scientific notation support
+                raw_value = row[parameter]
+                display_value, numeric_value = parse_parameter_value(raw_value, parameter_unit)
 
                 resolve_entity(api, Parameter, {
                     'part': pk,
                     'template': parameter_template_pk,
-                    'data': parameter_value,
-                    'data_numeric': parameter_value if isinstance(parameter_value, (int, float)) else None,
+                    'data': display_value,
+                    'data_numeric': numeric_value,
                 })
             except Exception as e:
                 logger.error(f"Error processing parameter '{parameter}': {e}")
