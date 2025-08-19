@@ -150,3 +150,23 @@ You can deactivate the virtual environment by running:
 ```bash
 deactivate
 ```
+
+# DBeaver
+
+To edit the database locally, you can use DBeaver:
+
+1. Install DBeaver from [here](https://dbeaver.io/download/).
+2. Find the IP address of the `inventree-db` container by running the following command in the terminal:
+
+    ```bash
+    docker ps -q | xargs -I{} sh -c "docker inspect -f '{{.Name}}: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' {}"
+    ```
+
+    typically it would be something like `172.18.0.4`
+3. Create a new connection in DBeaver using the following details:
+   - Host: use the IP address you found in step 2
+   - Port: 5432
+   - Database: inventree
+   - User: pguser (find the username in the .env file)
+   - Password: pgpassword (find the password in the .env file)
+4. If the database is hosted on a remote server, connect via ssh tunnel first
