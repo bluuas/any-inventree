@@ -11,7 +11,7 @@ import logging
 from utils.config import Config
 from utils.plugin import KiCadPlugin
 from utils.csv_processing import process_database_file, process_configuration_file
-from utils.delete_utils import delete_all
+from utils.delete_utils import delete_all, delete_entity_type, list_entity_types
 from utils.logging_utils import set_log_level
 from inventree.api import InvenTreeAPI
 
@@ -21,6 +21,8 @@ def main():
     parser = argparse.ArgumentParser(description="InvenTree Management CLI")
     parser.add_argument('--directory', help='Directory containing CSV files to process, relative to main.py')
     parser.add_argument('--delete-all', action='store_true', help='Delete all parts and entities')
+    parser.add_argument('--delete-entity', help='Delete all instances of a specific entity type (e.g., Parameter, Part)')
+    parser.add_argument('--list-entities', action='store_true', help='List all available entity types that can be deleted')
     parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
     parser.add_argument('--verbose', action='store_true', help='Print configuration details')
     
@@ -28,6 +30,14 @@ def main():
     
     # Set log level
     set_log_level(args.log_level)
+    
+    # Handle list entities command (no API needed)
+    if args.list_entities:
+        entity_types = list_entity_types()
+        print("Available entity types for deletion:")
+        for entity_type in sorted(entity_types):
+            print(f"  - {entity_type}")
+        return
     
     # Validate configuration
     missing_vars = Config.validate_required()
@@ -45,6 +55,12 @@ def main():
     
     if args.delete_all:
         delete_all(api)
+        return
+    
+    if args.delete_entity:
+        success = delete_entity_type(api, args.delete_entity)
+        if not success:
+            sys.exit(1)
         return
     
     # Install and configure the KiCad plugin
