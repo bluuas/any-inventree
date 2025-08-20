@@ -23,4 +23,4 @@ COPY . .
 # Expose port (adjust as needed, e.g., 8000 for Django)
 EXPOSE 8000
 
-# CMD ["gunicorn", "InvenTree.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "InvenTree.wsgi:application", "--bind", "0.0.0.0:8000"]
