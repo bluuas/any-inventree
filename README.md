@@ -61,7 +61,7 @@ Log out and log back in to apply the group changes.
 ### Database Migration
 
 Run in source directory:
-```
+```bash
 docker compose run --rm inventree-server invoke update
 ```
 
