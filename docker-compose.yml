@@ -40,6 +40,8 @@ services:
         container_name: inventree-db
         expose:
             - ${INVENTREE_DB_PORT:-5432}/tcp
+        ports:
+            - "5432:5432"
         environment:
             - PGDATA=/var/lib/postgresql/data/pgdb
             - POSTGRES_USER=${INVENTREE_DB_USER:?You must provide the 'INVENTREE_DB_USER' variable in the .env file}
@@ -128,3 +130,4 @@ services:
     #     volumes:
     #         - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro,z
     #         - ${INVENTREE_EXT_VOLUME}:/var/www:z
+
