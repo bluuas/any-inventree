@@ -67,6 +67,20 @@ docker compose run --rm inventree-server invoke update
 
 and start the container with `docker compose up` (`-d` if you want to run it in detached mode)
 
+## Save and Load Backups
+
+To create a backup of your InvenTree database, you can use the following command:
+
+```bash
+sudo docker compose run --rm inventree-server invoke export-records -f 'data/data.json'
+```
+
+To restore a backup, use the following command:
+
+```bash
+sudo docker compose run --rm inventree-server invoke import-records -c -f 'data/data.json'
+```
+
 ## Use the InvenTree API Scripts
 
 ### Virtual Environment
