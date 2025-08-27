@@ -30,13 +30,13 @@ def main():
     )
     logger.info("Creating units...")
     units = [
-        ('A2S', '[A] ** 2 / [t]', 'A2S'),
-        ('AAC', '[A]', 'AAC'),
-        ('ADC', '[A]', 'ADC'),
-        ('VAC', '[V]', 'VAC'),
-        ('VDC', '[V]', 'VDC'),
+        ('[A] ** 2 / [t]', 'A2S', 'A2S'),
+        ('[A]', 'AAC', 'AAC'),
+        ('[A]', 'ADC', 'ADC'),
+        ('[V]', 'VAC', 'VAC'),
+        ('[V]', 'VDC', 'VDC'),
     ]
-    for name, definition, symbol in units:
+    for definition, name, symbol in units:
         create_unit(api, definition, name, symbol)
 
 if __name__ == "__main__":
