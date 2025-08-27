@@ -104,7 +104,8 @@ class KiCadPlugin:
                 logger.info("KiCad plugin is already installed. Trying to activate.")
             else:
                 response_data = self.api.post(url="plugins/install/", data={
-                    'url': 'git+https://github.com/bluuas/inventree_kicad',
+                    # 'url': 'git+https://github.com/bluuas/inventree_kicad',
+                    'url': 'git+https://github.com/afkiwers/inventree_kicad',
                     'packagename': 'inventree-kicad-plugin',
                     'confirm': True,
                 })

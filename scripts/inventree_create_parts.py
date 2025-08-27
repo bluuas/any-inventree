@@ -89,8 +89,8 @@ def main():
             if filename.endswith('.csv') and not filename.endswith('Configuration.csv'):
                 process_database_file(api, os.path.join(csv_source_dir, filename))
     
-    # Update plugin settings at the end
-    plugin.update_settings()
+        # Update plugin settings at the end
+        plugin.update_settings()
 
 if __name__ == "__main__":
     main()

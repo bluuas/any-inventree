@@ -13,8 +13,8 @@ def parse_parameter_value(value_str, unit=''):
     Returns (display_value, numeric_value).
     
     Examples:
-    - '4.7 nF' -> ('4.7 nF', 0.0000000047)
-    - '1.2 kΩ' -> ('1.2 kΩ', 1200)
+    - '4.7 nF' -> ('4.7', 0.0000000047)
+    - '1.2 kΩ' -> ('1.2', 1200)
     - '100' -> ('100', 100)
     - '3.3e-6' -> ('3.3e-6', 0.0000033)
     """
@@ -40,7 +40,7 @@ def parse_parameter_value(value_str, unit=''):
         if number_match:
             try:
                 numeric_value = float(number_match.group(1))
-                return value_str, numeric_value
+                return number_match.group(1), numeric_value
             except ValueError:
                 pass
         return value_str, None
@@ -54,7 +54,8 @@ def parse_parameter_value(value_str, unit=''):
         multiplier = si_prefixes.get(prefix, 1.0)
         numeric_value = base_value * multiplier
         
-        return value_str, numeric_value
+        # Only return the numeric part as display_value
+        return match.group(1), numeric_value
         
     except (ValueError, TypeError):
         return value_str, None
