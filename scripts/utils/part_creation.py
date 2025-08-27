@@ -7,14 +7,12 @@ import pandas as pd
 from inventree.api import InvenTreeAPI
 from inventree.base import Attachment
 from inventree.company import Company, SupplierPart, ManufacturerPart
-from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated
-from inventree.stock import StockItem
+from inventree.part import Part, Parameter, ParameterTemplate
 from .entity_resolver import resolve_entity
 from .relation_utils import add_pending_relation
 from .error_codes import ErrorCodes
 from .config import get_site_url
 from .value_parser import parse_parameter_value
-import re
 
 logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)

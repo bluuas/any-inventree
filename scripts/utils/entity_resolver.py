@@ -64,11 +64,7 @@ def resolve_category_string(api: InvenTreeAPI, category_string: str) -> tuple:
         parent_pk = None
         for idx, level in enumerate(category_levels):
             is_last = idx == len(category_levels) - 1
-            data = {'name': level, 'structural': not is_last}
-            if parent_pk is not None:
-                data['parent'] = parent_pk
-            else:
-                data['parent'] = None
+            data = {'name': level, 'structural': not is_last, 'parent': parent_pk}
             parent_pk = resolve_entity(api, PartCategory, data)
             if parent_pk is None:
                 logger.error(f"Failed to create/resolve category: {level}")
