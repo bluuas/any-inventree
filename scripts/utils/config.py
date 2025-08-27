@@ -42,10 +42,10 @@ class Config:
     """Configuration class with all environment variables."""
     
     # InvenTree API Configuration
-    INVENTREE_API_URL = os.getenv("INVENTREE_API_URL", "http://inventree.localhost/api")
     INVENTREE_ADMIN_USER = os.getenv("INVENTREE_ADMIN_USER")
     INVENTREE_ADMIN_PASSWORD = os.getenv("INVENTREE_ADMIN_PASSWORD")
     INVENTREE_SITE_URL = os.getenv("INVENTREE_SITE_URL", "http://inventree.localhost")
+    INVENTREE_API_URL = os.getenv("INVENTREE_API_URL", f"{INVENTREE_SITE_URL}/api")
     
     # Database Configuration
     DATABASE_HOST = os.getenv("DATABASE_HOST", "localhost")

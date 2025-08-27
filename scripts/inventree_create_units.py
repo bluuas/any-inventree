@@ -15,11 +15,11 @@ def create_unit(api, definition, name, symbol):
         'name': name,
         'symbol': symbol,
     }
-    response = api.post(url='units/', data=unit_data)
-    if response.status_code == 201:
-        logger.info(f"Created unit: %s (%s)", name, symbol)
-    else:
-        logger.error("Failed to create unit: %s (%s) - %s", name, symbol, response.text)
+    try:
+        response = api.post(url='units/', data=unit_data)
+        logger.info(f"Response: {response}")
+    except Exception as e:
+        logger.error(f"Error creating unit: {name} ({symbol}) - {e}")
 
 def main():
     credentials = Config.get_api_credentials()
@@ -30,11 +30,11 @@ def main():
     )
     logger.info("Creating units...")
     units = [
-        ('[A] ** 2 / [t]', 'A2S', 'A2S'),
-        ('[A]', 'AAC', 'AAC'),
-        ('[A]', 'ADC', 'ADC'),
-        ('[V]', 'VAC', 'VAC'),
-        ('[V]', 'VDC', 'VDC'),
+        ('A ** 2 / t', 'A2S', 'A2S'),
+        ('A', 'AAC', 'AAC'),
+        ('A', 'ADC', 'ADC'),
+        ('V', 'VAC', 'VAC'),
+        ('V', 'VDC', 'VDC'),
     ]
     for definition, name, symbol in units:
         create_unit(api, definition, name, symbol)

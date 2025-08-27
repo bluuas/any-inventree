@@ -11,7 +11,7 @@ import logging
 from utils.config import Config
 from utils.plugin import KiCadPlugin
 from utils.csv_processing import process_database_file, process_configuration_file
-from scripts.utils.delete import delete_all, delete_entity_type, list_entity_types
+from utils.delete import delete_all, delete_entity_type, list_entity_types
 from utils.logging_utils import set_log_level
 from inventree.api import InvenTreeAPI
 
@@ -83,12 +83,12 @@ def main():
         for filename in os.listdir(csv_source_dir):
             if filename.endswith('Configuration.csv'):
                 process_configuration_file(api, os.path.join(csv_source_dir, filename))
-        
+
         # Then process all other CSV files
         for filename in os.listdir(csv_source_dir):
             if filename.endswith('.csv') and not filename.endswith('Configuration.csv'):
                 process_database_file(api, os.path.join(csv_source_dir, filename))
-    
+                
         # Update plugin settings at the end
         plugin.update_settings()
 
