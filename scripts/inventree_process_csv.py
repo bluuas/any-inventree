@@ -11,7 +11,7 @@ import logging
 from utils.config import Config
 from utils.plugin import KiCadPlugin
 from utils.csv_processing import process_database_file, process_configuration_file
-from utils.delete_utils import delete_all, delete_entity_type, list_entity_types
+from scripts.utils.delete import delete_all, delete_entity_type, list_entity_types
 from utils.logging_utils import set_log_level
 from inventree.api import InvenTreeAPI
 
