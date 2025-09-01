@@ -11,6 +11,7 @@ import logging
 from utils.config import Config
 from utils.plugin import KiCadPlugin
 from utils.logging_utils import set_log_level
+from utils.units import create_default_units
 from inventree.api import InvenTreeAPI
 
 logger = logging.getLogger('InvenTreeCLI')
@@ -43,6 +44,10 @@ def main():
     plugin = KiCadPlugin(api)
     plugin.install()
     plugin.configure_global_settings()
+    plugin.update_settings()
+
+    # create physical units
+    create_default_units(api)
 
 if __name__ == "__main__":
     main()
