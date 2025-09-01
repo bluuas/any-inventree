@@ -91,21 +91,23 @@ def create_parameters(api: InvenTreeAPI, row, pk):
     Returns error code.
     """
     try:
-        description_index = row.index.get_loc('DESCRIPTION')
+        # NOTES is the last column of the part attributes. Everything after until MANUFACTURER is considered a parameter.
+        notes_index = row.index.get_loc('NOTES')
         manufacturer_index = row.index.get_loc('MANUFACTURER')
         parameters = [
             (row.index[i])
-            for i in range(description_index + 1, manufacturer_index)
+            for i in range(notes_index + 1, manufacturer_index)
             if not pd.isna(row.index[i])
         ]
 
         if not parameters:
-            logger.warning("No valid parameters found between 'DESCRIPTION' and 'MANUFACTURER'.")
+            logger.warning("No valid parameters found between 'NOTES' and 'MANUFACTURER'.")
             return ErrorCodes.SUCCESS
 
         for parameter in parameters:
             try:
-                # Split parameter into name and unit if unit is present in square brackets
+                # Split parameter into name and format/unit if unit is present in square brackets
+                # e.g. FOOTPRINT [str] or HEIGHT [mm]
                 if '[' in parameter and ']' in parameter:
                     parameter_name = parameter.split('[')[0].strip()
                     parameter_unit = parameter.split('[')[1].replace(']', '').strip()
