@@ -94,41 +94,39 @@ def create_parameters(api: InvenTreeAPI, row, pk):
         # NOTES is the last column of the part attributes. Everything after until MANUFACTURER is considered a parameter.
         notes_index = row.index.get_loc('NOTES')
         manufacturer_index = row.index.get_loc('MANUFACTURER')
-        parameters = [
-            (row.index[i])
-            for i in range(notes_index + 1, manufacturer_index)
-            if not pd.isna(row.index[i])
-        ]
+        param_columns = row.index[notes_index + 1:manufacturer_index]
 
-        if not parameters:
+        # Pre-parse parameter names and units
+        parsed_params = []
+        for param_col in param_columns:
+            if pd.isna(param_col) or not param_col.strip():
+                continue
+            if '[' in param_col and ']' in param_col:
+                name = param_col.split('[')[0].strip()
+                unit = param_col.split('[')[1].replace(']', '').strip()
+            else:
+                name = param_col.strip()
+                unit = ''
+            if not name:
+                logger.warning(f"Parameter name '{param_col}' is invalid. Skipping.")
+                continue
+            parsed_params.append((param_col, name, unit))
+
+        if not parsed_params:
             logger.warning("No valid parameters found between 'NOTES' and 'MANUFACTURER'.")
             return ErrorCodes.SUCCESS
 
-        for parameter in parameters:
+        for param_col, param_name, param_unit in parsed_params:
             try:
-                # Split parameter into name and format/unit if unit is present in square brackets
-                # e.g. FOOTPRINT [str] or HEIGHT [mm]
-                if '[' in parameter and ']' in parameter:
-                    parameter_name = parameter.split('[')[0].strip()
-                    parameter_unit = parameter.split('[')[1].replace(']', '').strip()
-                else:
-                    parameter_name = parameter.strip()
-                    parameter_unit = ''
-
-                if pd.isna(parameter_name) or not parameter_name:
-                    logger.warning(f"Parameter name '{parameter}' is invalid. Skipping.")
-                    continue
-                    
-                parameter_template_pk = resolve_entity(api, ParameterTemplate, {
-                    'name': parameter_name,
-                })
+                parameter_template_pk = resolve_entity(api, ParameterTemplate, {'name': param_name})
                 if parameter_template_pk is None:
-                    logger.error(f"Parameter template not found for '{parameter_name}' Unit: {parameter_unit}. Skipping.")
+                    logger.error(f"Parameter template not found for '{param_name}' Unit: {param_unit}. Skipping.")
                     continue
 
-                # Parse parameter value with scientific notation support
-                raw_value = row[parameter]
-                display_value, numeric_value = parse_parameter_value(raw_value, parameter_unit)
+                raw_value = row[param_col]
+                logger.debug(f"Parsing value: {raw_value}, unit: {param_unit}")
+                display_value, numeric_value = parse_parameter_value(raw_value, param_unit)
+                logger.debug(f"Parsed value: display='{display_value}', numeric={numeric_value}")
 
                 resolve_entity(api, Parameter, {
                     'part': pk,
@@ -137,9 +135,9 @@ def create_parameters(api: InvenTreeAPI, row, pk):
                     'data_numeric': numeric_value,
                 })
             except Exception as e:
-                logger.error(f"Error processing parameter '{parameter}': {e}")
+                logger.error(f"Error processing parameter '{param_col}': {e}")
                 continue
-                
+
         return ErrorCodes.SUCCESS
 
     except Exception as e:

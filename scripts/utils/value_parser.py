@@ -15,19 +15,19 @@ def parse_parameter_value(value_str, unit=''):
     If unit/format is "str", just return the same string.
 
     Examples:
-    - '4.7 nF' -> ('4.7', 0.0000000047)
-    - '1.2 kΩ' -> ('1.2', 1200)
-    - '100' -> ('100', 100)
-    - '3.3e-6' -> ('3.3e-6', 0.0000033)
+    - '4.7 nF', unit='F' -> ('4.7e-9', 4.7e-9)
+    - '4.7 nF', unit='str' -> ('4.7 nF', None)
+    - '1.2 kΩ', unit='Ω' -> ('1200', 1200)
+    - '100', unit='' -> ('100', 100)
+    - '3.3e-6', unit='' -> ('3.3e-6', 3.3e-6)
     """
 
     if pd.isna(value_str) or not str(value_str).strip():
         return '-', None
 
+    value_str = str(value_str).strip()
     if unit == "str":
         return value_str, None
-    
-    value_str = str(value_str).strip()
 
     # SI prefixes mapping
     si_prefixes = {
@@ -56,15 +56,21 @@ def parse_parameter_value(value_str, unit=''):
         prefix = match.group(2)
         unit_part = match.group(3)
 
-        # Apply SI prefix multiplier
+        # Only apply SI prefix if the unit matches or is empty
         multiplier = si_prefixes.get(prefix, 1.0)
         numeric_value = base_value * multiplier
 
-        # Only return the numeric part as display_value
-        return match.group(1), numeric_value
+        # If a target unit is specified and the parsed unit doesn't match, don't convert
+        if unit and unit != unit_part and unit_part:
+            return value_str, None
+
+        # Format numeric_value in scientific notation if applicable
+        display_value = f"{numeric_value:.10g}"  # Adjust precision as needed
+        return display_value, numeric_value
 
     except (ValueError, TypeError):
         return value_str, None
+
 
 def convert_to_base_unit(value, from_unit, to_unit=''):
     """
