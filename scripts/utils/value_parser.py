@@ -11,28 +11,34 @@ def parse_parameter_value(value_str, unit=''):
     """
     Parse parameter value with scientific notation and units.
     Returns (display_value, numeric_value).
-    
+
+    If unit/format is "str", just return the same string.
+
     Examples:
     - '4.7 nF' -> ('4.7', 0.0000000047)
     - '1.2 kΩ' -> ('1.2', 1200)
     - '100' -> ('100', 100)
     - '3.3e-6' -> ('3.3e-6', 0.0000033)
     """
+
     if pd.isna(value_str) or not str(value_str).strip():
         return '-', None
-        
-    value_str = str(value_str).strip()
+
+    if unit == "str":
+        return value_str, None
     
+    value_str = str(value_str).strip()
+
     # SI prefixes mapping
     si_prefixes = {
         'T': 1e12, 'G': 1e9, 'M': 1e6, 'k': 1e3, 'K': 1e3,
         'm': 1e-3, 'μ': 1e-6, 'u': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15
     }
-    
+
     # Pattern to match number with optional unit and prefix
     pattern = r'^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*([μumkKMGTnpf]?)([A-Za-zΩ°%]*)$'
     match = re.match(pattern, value_str)
-    
+
     if not match:
         # If no pattern match, try to extract just the number
         number_pattern = r'^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)'
@@ -44,19 +50,19 @@ def parse_parameter_value(value_str, unit=''):
             except ValueError:
                 pass
         return value_str, None
-    
+
     try:
         base_value = float(match.group(1))
         prefix = match.group(2)
         unit_part = match.group(3)
-        
+
         # Apply SI prefix multiplier
         multiplier = si_prefixes.get(prefix, 1.0)
         numeric_value = base_value * multiplier
-        
+
         # Only return the numeric part as display_value
         return match.group(1), numeric_value
-        
+
     except (ValueError, TypeError):
         return value_str, None
 
