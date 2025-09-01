@@ -123,3 +123,4 @@ inventree-data-copy/
 # drawio files
 .$overview.drawio.bkp
 notes.txt
+scripts/gsheet-database/*
