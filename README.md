@@ -184,3 +184,12 @@ To edit the database locally, you can use DBeaver:
    - User: pguser (find the username in the .env file)
    - Password: pgpassword (find the password in the .env file)
 4. If the database is hosted on a remote server, connect via ssh tunnel first
+
+## Notes for cleaning up...
+
+```bash
+sudo docker stop $(sudo docker ps -aq)
+sudo docker rm $(sudo docker ps -aq)
+sudo docker rmi $(sudo docker images -q)
+sudo docker volume rm $(sudo docker volume ls -q)
+```
