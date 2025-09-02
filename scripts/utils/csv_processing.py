@@ -37,9 +37,7 @@ def process_database_file(api, filename):
         logger.error(f"Error reading CSV file {filename}: {e}")
         return ErrorCodes.FILE_ERROR
         
-    for i, row in df.iterrows():
-        if i >= 400:
-            break
+    for i, row in df.iloc[1000:1004].iterrows():
 
         # --------------------------------- category --------------------------------- #
         category_string = f"{row['CATEGORY']} / {row['TYPE']}"
@@ -70,7 +68,7 @@ def process_database_file(api, filename):
         if error_code != ErrorCodes.SUCCESS:
             logger.warning(f"Failed to create suppliers/manufacturers for row {i}: {row['NAME']}")
             
-        logger.info(f"Processed row successfully: {row['NAME']}")
+        logger.info(f"Processed row {row.name} successfully: {row['NAME']}")
         
     # resolve pending relations
     try:
