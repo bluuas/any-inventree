@@ -15,7 +15,7 @@ from collections import OrderedDict
 logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
-MAX_CACHE_SIZE = 1000  # Adjust as needed
+MAX_CACHE_SIZE = 100  # Adjust as needed
 
 # Use OrderedDict for LRU behavior
 caches = {
@@ -81,7 +81,10 @@ def resolve_category_string(api: InvenTreeAPI, category_string: str) -> tuple:
 def _cache_set(cache, key, value):
     cache[key] = value
     if len(cache) > MAX_CACHE_SIZE:
-        cache.popitem(last=False)  # Remove oldest
+        # Remove the oldest half of the cache
+        num_to_remove = len(cache) // 2
+        for _ in range(num_to_remove):
+            cache.popitem(last=False)  # Remove oldest
 
 def resolve_entity(api: InvenTreeAPI, entity_type, data):
     """
