@@ -181,8 +181,8 @@ To edit the database locally, you can use DBeaver:
    - Host: use the IP address you found in step 2
    - Port: 5432
    - Database: inventree
-   - User: pguser (find the username in the .env file)
-   - Password: pgpassword (find the password in the .env file)
+   - User: user (find the username in the .env file)
+   - Password: user (find the password in the .env file)
 4. If the database is hosted on a remote server, connect via ssh tunnel first
 
 ## Notes for cleaning up...
