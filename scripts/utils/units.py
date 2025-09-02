@@ -1,7 +1,7 @@
 import logging
 from inventree.api import InvenTreeAPI
 
-from error_codes import ErrorCodes
+from utils.error_codes import ErrorCodes
 
 logger = logging.getLogger(__name__)
 
@@ -27,21 +27,21 @@ def create_unit(api: InvenTreeAPI, name: str,  definition: str, symbol: str):
             logger.info(f"Created unit: {name} ({symbol})")
             return ErrorCodes.SUCCESS
         logger.error(f"Failed to create unit: {name} ({symbol}) - {getattr(response, 'text', str(response))}")
-        return ErrorCodes.FAILURE
+        return ErrorCodes.ENTITY_CREATION_FAILED
     except Exception as e:
         logger.error(f"Error creating unit: {name} ({symbol}) - {e}")
-        return ErrorCodes.FAILURE
+        return ErrorCodes.ENTITY_CREATION_FAILED
 
 def create_default_units(api: InvenTreeAPI):
     """
     Create a set of default units in InvenTree.
     """
     units = [
-        ('A2S', '[A] ** 2 / [t]', 'A2S'),
-        ('AAC', '[A]', 'AAC'),
-        ('ADC', '[A]', 'ADC'),
-        ('VAC', '[V]', 'VAC'),
-        ('VDC', '[V]', 'VDC'),
+        ('A2S', 'A **2 / t', 'A2S'),
+        ('AAC', 'A', 'AAC'),
+        ('ADC', 'A', 'ADC'),
+        ('VAC', 'V', 'VAC'),
+        ('VDC', 'V', 'VDC'),
     ]
     for name, definition, symbol in units:
         create_unit(api, name, definition, symbol)
