@@ -5,7 +5,6 @@ Example usage of the centralized configuration and KiCad plugin class.
 """
 
 import sys
-import os
 import argparse
 import logging
 from utils.config import Config
