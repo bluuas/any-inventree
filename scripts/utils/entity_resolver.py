@@ -10,24 +10,27 @@ from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated, BomItem
 from inventree.stock import StockItem, StockLocation
 from .error_codes import ErrorCodes
+from collections import OrderedDict
 
 logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
-# Caches for entities to speed up lookups
+MAX_CACHE_SIZE = 1000  # Adjust as needed
+
+# Use OrderedDict for LRU behavior
 caches = {
-    Attachment: {},
-    BomItem: {},
-    Company: {},
-    ManufacturerPart: {},
-    Parameter: {},
-    ParameterTemplate: {},
-    Part: {},
-    PartCategory: {},
-    PartRelated: {},
-    StockItem: {},
-    StockLocation: {},
-    SupplierPart: {},
+    Attachment: OrderedDict(),
+    BomItem: OrderedDict(),
+    Company: OrderedDict(),
+    ManufacturerPart: OrderedDict(),
+    Parameter: OrderedDict(),
+    ParameterTemplate: OrderedDict(),
+    Part: OrderedDict(),
+    PartCategory: OrderedDict(),
+    PartRelated: OrderedDict(),
+    StockItem: OrderedDict(),
+    StockLocation: OrderedDict(),
+    SupplierPart: OrderedDict(),
 }
 
 # Lookup Table for identifiers per entity type
@@ -75,6 +78,11 @@ def resolve_category_string(api: InvenTreeAPI, category_string: str) -> tuple:
         logger.error(f"Error resolving category string '{category_string}': {e}")
         return None, ErrorCodes.API_ERROR
 
+def _cache_set(cache, key, value):
+    cache[key] = value
+    if len(cache) > MAX_CACHE_SIZE:
+        cache.popitem(last=False)  # Remove oldest
+
 def resolve_entity(api: InvenTreeAPI, entity_type, data):
     """
     Resolve an entity by checking cache first, then API, then creating if needed.
@@ -89,20 +97,18 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
         cache = caches[entity_type]
         composite_key = tuple(str(data[identifier]) for identifier in identifiers if identifier in data)
 
-        # Check cache first
         entity_id = cache.get(composite_key)
         if entity_id is not None:
+            cache.move_to_end(composite_key)  # Mark as recently used
             logger.debug(f"{entity_type.__name__} '{composite_key}' found in cache with ID: {entity_id}")
             return entity_id
 
         # Fetch all entities from the API and populate the cache
         try:
             entities = entity_type.list(api)
-            entity_dict = {
-                tuple(str(getattr(entity, identifier)) for identifier in identifiers): entity.pk 
-                for entity in entities
-            }
-            cache.update(entity_dict)
+            for entity in entities:
+                key = tuple(str(getattr(entity, identifier)) for identifier in identifiers)
+                _cache_set(cache, key, entity.pk)
         except Exception as e:
             logger.error(f"Error fetching {entity_type.__name__} entities from API: {e}")
             return None
@@ -117,7 +123,7 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
         try:
             new_entity = entity_type.create(api, data)
             logger.debug(f"{entity_type.__name__} '{composite_key}' created successfully at ID: {new_entity.pk}")
-            cache[composite_key] = new_entity.pk
+            _cache_set(cache, composite_key, new_entity.pk)
             return new_entity.pk
         except Exception as e:
             logger.error(f"Error creating new {entity_type.__name__} entity '{composite_key}': {e}")
