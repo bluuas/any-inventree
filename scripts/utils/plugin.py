@@ -33,6 +33,13 @@ class KiCadPlugin:
         self.plugin_pk = plugin_pk or Config.KICAD_PLUGIN_PK
         self.site_url = Config.get_site_url()
         self.category_cache = {}
+        self.settings = {
+            'KICAD_FOOTPRINT_PARAMETER': None,
+            'KICAD_SYMBOL_PARAMETER': None,
+            'KICAD_REFERENCE_PARAMETER': None,
+            'KICAD_VALUE_PARAMETER': None,
+            'KICAD_FIELD_VISIBILITY_PARAMETER': None,
+        }
         
     def fetch_categories(self):
         """Fetch and cache KiCad categories from the plugin."""
@@ -122,23 +129,33 @@ class KiCadPlugin:
             logger.error(f"Error installing or activating KiCad plugin: {e}")
             raise
 
+    def set_setting(self, key, value):
+        """Set a plugin setting value."""
+        if key in self.settings:
+            self.settings[key] = value
+        else:
+            raise KeyError(f"Unknown setting: {key}")
+
+    def get_setting(self, key):
+        """Get a plugin setting value."""
+        return self.settings.get(key, None)
+
     def update_settings(self):
         """Update settings for the KiCad plugin."""
-        footprint_pk = resolve_entity(self.api, ParameterTemplate, {'name': 'FOOTPRINT'})
-        symbol_pk = resolve_entity(self.api, ParameterTemplate, {'name': 'SYMBOL'})
-        designator_pk = resolve_entity(self.api, ParameterTemplate, {'name': 'DESIGNATOR'})
-        value_pk = resolve_entity(self.api, ParameterTemplate, {'name': 'VALUE'})
-        visibility_pk = resolve_entity(self.api, ParameterTemplate, {'name': 'KICAD_VISIBILITY'})
+        # Only set values if not already set
+        if self.settings['KICAD_FOOTPRINT_PARAMETER'] is None:
+            self.settings['KICAD_FOOTPRINT_PARAMETER'] = resolve_entity(self.api, ParameterTemplate, {'name': 'FOOTPRINT'})
+        if self.settings['KICAD_SYMBOL_PARAMETER'] is None:
+            self.settings['KICAD_SYMBOL_PARAMETER'] = resolve_entity(self.api, ParameterTemplate, {'name': 'SYMBOL'})
+        if self.settings['KICAD_REFERENCE_PARAMETER'] is None:
+            self.settings['KICAD_REFERENCE_PARAMETER'] = resolve_entity(self.api, ParameterTemplate, {'name': 'DESIGNATOR'})
+        if self.settings['KICAD_VALUE_PARAMETER'] is None:
+            self.settings['KICAD_VALUE_PARAMETER'] = resolve_entity(self.api, ParameterTemplate, {'name': 'VALUE'})
+        if self.settings['KICAD_FIELD_VISIBILITY_PARAMETER'] is None:
+            self.settings['KICAD_FIELD_VISIBILITY_PARAMETER'] = resolve_entity(self.api, ParameterTemplate, {'name': 'KICAD_VISIBILITY'})
         
-        settings = {
-            'KICAD_FOOTPRINT_PARAMETER': footprint_pk,
-            'KICAD_SYMBOL_PARAMETER': symbol_pk,
-            'KICAD_REFERENCE_PARAMETER': designator_pk,
-            'KICAD_VALUE_PARAMETER': value_pk,
-            'KICAD_FIELD_VISIBILITY_PARAMETER': visibility_pk,
-        }
         try:
-            for key, value in settings.items():
+            for key, value in self.settings.items():
                 self.api.patch(url=f"plugins/{self.plugin_pk}/settings/{key}/", data={'value': value})
                 logger.debug(f"Updated KiCad setting {key} to {value}.")
         except Exception as e:
