@@ -118,27 +118,35 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
         if entity_id is not None:
             logger.debug(f"{entity_type.__name__} '{composite_key}' already exists in database with ID: {entity_id}")
             return entity_id
-
-        # Create new entity if not found
-        try:
-            if writer.get_status():
-                new_entity = writer.create(entity_type, data)
-            else:
-                new_entity = entity_type.create(api, data)
-                logger.debug(f"{entity_type.__name__} '{composite_key}' created successfully at ID: {new_entity.pk}")
-            cache[composite_key] = new_entity.pk
-            return new_entity.pk
-        except Exception as e:
-            logger.error(f"Error creating new {entity_type.__name__} entity '{composite_key}': {e}")
-            return None
-
     except Exception as e:
         logger.error(f"Error resolving entity for {entity_type.__name__}: {e}")
         return None
+    
+    # Create new entity if not found
+    try:
+        pk = None
+        if writer.is_active():
+            pk, error = writer.create(api, entity_type, data)
+            if error == ErrorCodes.ENTITY_CREATION_FAILED or pk is None:
+                logger.warning(f"Writer failed to create {entity_type.__name__} entity '{composite_key}', falling back to API.")
+                new_entity = entity_type.create(api, data)
+                pk = new_entity.pk
+            return pk
+        else:
+            new_entity = entity_type.create(api, data)
+            pk = new_entity.pk
+            logger.debug(f"{entity_type.__name__} '{composite_key}' created successfully via API at ID: {pk}")
+            cache[composite_key] = pk
+            return pk
+    except Exception as e:
+        logger.error(f"Error creating new {entity_type.__name__} entity '{composite_key}': {e}")
+        return None
+
 
 def clear_entity_caches():
     """
     Clear all entity caches (for use after mass deletion, etc).
     """
     for cache in caches.values():
+        cache.clear()
         cache.clear()

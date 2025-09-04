@@ -127,14 +127,11 @@ def create_parameters(api: InvenTreeAPI, row, pk):
                 display_value, numeric_value = parse_parameter_value(raw_value, param_unit)
                 logger.debug(f"Parsed value: display='{display_value}', numeric={numeric_value}")
 
-                if USE_CSV_DB_WRITER:
-                    writer.add_partparameter_db(pk, parameter_template_pk, display_value, numeric_value)
-                else:
-                    resolve_entity(api, Parameter, {
-                        'part': pk,
-                        'template': parameter_template_pk,
-                        'data': display_value,
-                        'data_numeric': numeric_value,
+                resolve_entity(api, Parameter, {
+                    'part': pk,
+                    'template': parameter_template_pk,
+                    'data': display_value,
+                    'data_numeric': numeric_value,
                 })
             except Exception as e:
                 logger.error(f"Error processing parameter '{param_col}': {e}")

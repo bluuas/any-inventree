@@ -10,18 +10,12 @@ from inventree.part import Part, Parameter, PartRelated
 
 logger = logging.getLogger('InvenTreeCLI')
 
-class CsvEntity:
-    """
-    Represents a CSV entity with a primary key. Used to mimic a return value from an InvenTree API .create() call. 
-    """
-    def __init__(self, pk):
-        self.pk = pk
-
 class CsvDbWriter:
     CSV_DB_WRITER_IS_ACTIVE = True
+    _id_counters_fetched = False
 
     @classmethod
-    def get_status(cls):
+    def is_active(cls):
         return cls.CSV_DB_WRITER_IS_ACTIVE
 
     DB_PART_COLUMNS = [
@@ -54,25 +48,27 @@ class CsvDbWriter:
 
     @classmethod
     def fetch_id_counters(cls, api: InvenTreeAPI):
-            parts = Part.list(api)
-            upper = max((part['pk'] for part in parts), default=None)
-            if upper is not None:
-                cls.ID_UPPER_LIMIT["part"] = upper
+        parts = Part.list(api)
+        upper = max((part['pk'] for part in parts), default=None)
+        if upper is not None:
+            cls.ID_UPPER_LIMIT["part"] = upper
 
-            parameters = Parameter.list(api)
-            upper = max((param['pk'] for param in parameters), default=None)
-            if upper is not None:
-                cls.ID_UPPER_LIMIT["partparameter"] = upper
+        parameters = Parameter.list(api)
+        upper = max((param['pk'] for param in parameters), default=None)
+        if upper is not None:
+            cls.ID_UPPER_LIMIT["partparameter"] = upper
 
-            related = PartRelated.list(api)
-            upper = max((rel['pk'] for rel in related), default=None)
-            if upper is not None:
-                cls.ID_UPPER_LIMIT["partrelated"] = upper
+        related = PartRelated.list(api)
+        upper = max((rel['pk'] for rel in related), default=None)
+        if upper is not None:
+            cls.ID_UPPER_LIMIT["partrelated"] = upper
 
-            manufacturers = ManufacturerPart.list(api)
-            upper = max((man['pk'] for man in manufacturers), default=None)
-            if upper is not None:
-                cls.ID_UPPER_LIMIT["manufacturerpart"] = upper
+        manufacturers = ManufacturerPart.list(api)
+        upper = max((man['pk'] for man in manufacturers), default=None)
+        if upper is not None:
+            cls.ID_UPPER_LIMIT["manufacturerpart"] = upper
+
+        logger.info(f"Fetched ID upper limits: {cls.ID_UPPER_LIMIT}")
 
     @classmethod
     def get_next_id(cls, key):
@@ -101,6 +97,7 @@ class CsvDbWriter:
 
     @classmethod
     def add_part_row_db(cls, data):
+        logger.info(f"Adding part row to DB: {data}")
         id = cls.get_next_id("part")
         category_pk = data.get("category", "")
         name = data.get("name", "")
@@ -163,53 +160,59 @@ class CsvDbWriter:
         return id
 
     @classmethod
-    def add_partparameter_db(cls, part_pk, parameter_template_pk, display_value, numeric_value):
+    def add_partparameter_db(cls, data):
+        id = cls.get_next_id("partparameter")
         out_row = {
-            "id": cls.get_next_id("partparameter"),
-            "data": display_value,
-            "part_id": part_pk,
-            "template_id": parameter_template_pk,
-            "data_numeric": numeric_value,
+            "id": id,
+            "data": data.get("display_value", ""),
+            "part_id": data.get("part_pk", ""),
+            "template_id": data.get("parameter_template_pk", ""),
+            "data_numeric": data.get("numeric_value", ""),
             "metadata": "{}"
         }
         cls.DB_PARTPARAMETER_ROWS.append(out_row)
+        return id
 
     @classmethod
-    def add_partrelated_row_db(cls, row, part_1_id, part_2_id):
+    def add_partrelated_db(cls, data):
+        id = cls.get_next_id("partrelated")
         out_row = {
-            "id": cls.get_next_id("partrelated"),
-            "part_1_id": part_1_id,
-            "part_2_id": part_2_id,
+            "id": id,
+            "part_1_id": data.get("part_1_id", ""),
+            "part_2_id": data.get("part_2_id", ""),
             "metadata": "{}",
-            "note": row.get("NOTE", "")
+            "note": data.get("note", "")
         }
         cls.DB_PARTRELATED_ROWS.append(out_row)
+        return id
 
     @classmethod
-    def add_manufacturerpart_db(cls, row, part_pk, manufacturer_pk):
+    def add_manufacturerpart_db(cls, data):
         id = cls.get_next_id("manufacturerpart")
-        mpn = row.get("MPN", "")
+        part = data.get("part", "")
+        manufacturer = data.get("manufacturer", "")
+        mpn = data.get("MPN", "")
         link = f"{get_site_url()}/company/manufacturer-part/{id}/"
-        description = row.get("DESCRIPTION", "")
-        notes = row.get("NOTES", "")
-        minimum_stock = row.get("MINIMUM_STOCK", "0")
-        is_virtual = str(row.get("TYPE", "")).strip().lower() in ['generic', 'critical']
-        designator = row.get('DESIGNATOR [str]', '')
-        rev0_str = str(part_pk).zfill(6)
-        ipn = f"{designator}{rev0_str}-{part_pk}"
+        description = data.get("description", "")
+        notes = data.get("notes", "")
+        minimum_stock = data.get("minimum_stock", "0")
+        is_virtual = str(data.get("TYPE", "")).strip().lower() in ['generic', 'critical']
+        designator = data.get('DESIGNATOR [str]', '')
+        rev0_str = str(part).zfill(6)
+        ipn = f"{designator}{rev0_str}-{part}"
 
         out_row = {
             "id": id,
             "MPN": mpn,
             "link": link,
             "description": description,
-            "manufacturer_id": manufacturer_pk,
-            "part_id": part_pk,
+            "manufacturer_id": manufacturer,
+            "part_id": part,
             "metadata": "{}",
             "barcode_data": "",
             "barcode_hash": "",
             "notes": notes,
-            "name": row.get("NAME", ""),
+            "name": data.get("NAME", ""),
             "keywords": "",
             "ipn": ipn,
             "image": "",
@@ -229,13 +232,13 @@ class CsvDbWriter:
             "variant_of_id": "",
             "assembly": "false",
             "component": "false",
-            "virtual": str(is_virtual).lower(),
-            "revision": row.get("REVISION", "0"),
+            "virtual": "false",
+            "revision": data.get("revision", "0"),
             "creation_date": "2025-09-04",
             "creation_user_id": "1",
             "level": "0",
-            "lft": str(part_pk),
-            "rght": str(part_pk+1),
+            "lft": str(part),
+            "rght": str(part+1),
             "tree_id": "1",
             "default_expiry": "0",
             "base_cost": "0.000000",
@@ -246,33 +249,30 @@ class CsvDbWriter:
             "revision_of_id": "",
         }
         cls.DB_MANUFACTURERPART_ROWS.append(out_row)
+        return id
 
     @classmethod
-    def create(cls, entity_type, data) -> tuple:
+    def create(cls, api, entity_type, data) -> tuple:
         """
         Create a CSV row for the given entity_type and data, return an object with .pk attribute.
+        Ensures ID counters are fetched once before first use.
         """
+        if not cls._id_counters_fetched:
+            cls.fetch_id_counters(api)
+            cls._id_counters_fetched = True
+
         if entity_type.__name__ == "Part":
             pk = cls.add_part_row_db(data)
-            return CsvEntity(pk), ErrorCodes.SUCCESS
+            return pk, ErrorCodes.SUCCESS
         elif entity_type.__name__ == "Parameter":
-            part_pk = data.get("part", "")
-            template_pk = data.get("template", "")
-            display_value = data.get("data", "")
-            numeric_value = data.get("data_numeric", "")
-            cls.add_partparameter_db(part_pk, template_pk, display_value, numeric_value)
-            return CsvEntity(None), ErrorCodes.SUCCESS
+            pk = cls.add_partparameter_db(data)
+            return pk, ErrorCodes.SUCCESS
         elif entity_type.__name__ == "PartRelated":
-            part_1_id = data.get("part_1", "")
-            part_2_id = data.get("part_2", "")
-            cls.add_partrelated_row_db(data, part_1_id, part_2_id)
-            return CsvEntity(None), ErrorCodes.SUCCESS
+            pk = cls.add_partrelated_db(data)
+            return pk, ErrorCodes.SUCCESS
         elif entity_type.__name__ == "ManufacturerPart":
-            part_pk = data.get("part", "")
-            manufacturer_pk = data.get("manufacturer", "")
-            cls.add_manufacturerpart_db(data, part_pk, manufacturer_pk)
-            return CsvEntity(None), ErrorCodes.SUCCESS
-        # Add more entity types as needed
+            pk = cls.add_manufacturerpart_db(data)
+            return pk, ErrorCodes.SUCCESS
         else:
             logger.warning(f"CsvDbWriter.create: Unsupported entity type {entity_type.__name__}")
-            return CsvEntity(None), ErrorCodes.ENTITY_CREATION_FAILED
+            return None, ErrorCodes.ENTITY_CREATION_FAILED

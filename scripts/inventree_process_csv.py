@@ -64,9 +64,9 @@ def main():
         return
     
     # Install and configure the KiCad plugin
-    plugin = KiCadPlugin(api)
-    plugin.install()
-    plugin.configure_global_settings()
+    # plugin = KiCadPlugin(api)
+    # plugin.install()
+    # plugin.configure_global_settings()
     
     # Process CSV files if directory is provided
     if args.directory:
@@ -90,7 +90,7 @@ def main():
                 process_database_file(api, os.path.join(csv_source_dir, filename))
                 
         # Update plugin settings at the end
-        plugin.update_settings()
+        # plugin.update_settings()
 
 if __name__ == "__main__":
     main()
