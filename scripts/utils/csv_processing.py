@@ -10,10 +10,9 @@ from .part_creation import (
     create_part,
     create_parameters,
     create_suppliers_and_manufacturers,
-    write_parts_db_csv,
 )
 from .stock import get_default_stock_location_pk
-from utils.entity_resolver import resolve_entity, resolve_category_string
+from utils.entity_resolver import resolve_entity, resolve_category_string, resolving_complete
 from inventree.part import Part, ParameterTemplate
 from .relation_utils import resolve_pending_relations
 from .error_codes import ErrorCodes
@@ -38,7 +37,7 @@ def process_database_file(api, filename):
         logger.error(f"Error reading CSV file {filename}: {e}")
         return ErrorCodes.FILE_ERROR
 
-    for i, row in df.iloc[:4310].iterrows():
+    for i, row in df.iloc[:4].iterrows():
 
         # --------------------------------- category --------------------------------- #
         category_string = f"{row['CATEGORY']} / {row['TYPE']}"
@@ -80,7 +79,7 @@ def process_database_file(api, filename):
         
     # Write all buffered part rows to DB CSV using pandas
     try:
-        write_parts_db_csv()
+        resolving_complete()
     except Exception as e:
         logger.error(f"Error writing parts DataFrame to DB CSV: {e}")
 

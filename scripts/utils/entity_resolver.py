@@ -10,6 +10,7 @@ from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated, BomItem
 from inventree.stock import StockItem, StockLocation
 from .error_codes import ErrorCodes
+from .csv_db_writer import CsvDbWriter
 
 logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
@@ -45,6 +46,11 @@ IDENTIFIER_LUT = {
     StockLocation: ['name'],
     SupplierPart: ['SKU'],
 }
+
+writer = CsvDbWriter()
+
+def resolving_complete():
+    writer.write_all_db_csv()
 
 def resolve_category_string(api: InvenTreeAPI, category_string: str) -> tuple:
     """
@@ -115,8 +121,11 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
 
         # Create new entity if not found
         try:
-            new_entity = entity_type.create(api, data)
-            logger.debug(f"{entity_type.__name__} '{composite_key}' created successfully at ID: {new_entity.pk}")
+            if writer.get_status():
+                new_entity = writer.create(entity_type, data)
+            else:
+                new_entity = entity_type.create(api, data)
+                logger.debug(f"{entity_type.__name__} '{composite_key}' created successfully at ID: {new_entity.pk}")
             cache[composite_key] = new_entity.pk
             return new_entity.pk
         except Exception as e:
