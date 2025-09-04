@@ -13,9 +13,46 @@ from .relation_utils import add_pending_relation
 from .error_codes import ErrorCodes
 from .config import get_site_url
 from .value_parser import parse_parameter_value
+import csv
+import os
 
 logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
+
+# Accumulate part rows here
+PART_ROWS = []
+
+def add_part_row(row, pk):
+    """
+    Add part data to the global PART_ROWS list.
+    """
+    site_url = get_site_url()
+    out_row = {
+        "Minimum Stock": row.get("MINIMUM_STOCK", "0"),
+        "Name": row.get("NAME", ""),
+        "Category": row.get("CATEGORY", ""),
+        "Description": row.get("DESCRIPTION", ""),
+        "IPN": "",  # Will be set below
+        "Link": f"{site_url}/part/{pk}/",
+        "Notes": row.get("NOTES", ""),
+        "Revision": row.get("REVISION", ""),
+        "Virtual": str(row.get("TYPE", "")).strip().lower() in ['generic', 'critical'],
+    }
+    designator = row.get('DESIGNATOR [str]', '')
+    rev0_str = str(pk).zfill(6)
+    out_row["IPN"] = f"{designator}{rev0_str}-{pk}"
+    PART_ROWS.append(out_row)
+
+def write_parts_df_to_csv():
+    """
+    Write all accumulated part rows to csv-output/part_part.csv using pandas.
+    """
+    output_path = os.path.join(os.path.dirname(__file__), "../csv-output/part_part.csv")
+    output_path = os.path.abspath(output_path)
+    df = pd.DataFrame(PART_ROWS)
+    # Only write if there are rows
+    if not df.empty:
+        df.to_csv(output_path, mode='a', header=False, index=False)
 
 def create_part(api: InvenTreeAPI, row, category_pk):
     """
@@ -43,7 +80,13 @@ def create_part(api: InvenTreeAPI, row, category_pk):
         if pk is None:
             logger.error(f"Failed to create part: {name}")
             return None, ErrorCodes.ENTITY_CREATION_FAILED
-            
+
+        # Add to DataFrame buffer after part creation
+        try:
+            add_part_row(row, pk)
+        except Exception as e:
+            logger.warning(f"Failed to buffer part {pk} for CSV: {e}")
+
         # Update part link and IPN
         try:
             site_url = get_site_url()

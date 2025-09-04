@@ -10,6 +10,7 @@ from .part_creation import (
     create_part,
     create_parameters,
     create_suppliers_and_manufacturers,
+    write_parts_df_to_csv,
 )
 from .stock import get_default_stock_location_pk
 from utils.entity_resolver import resolve_entity, resolve_category_string
@@ -77,4 +78,10 @@ def process_database_file(api, filename):
         logger.error(f"Error resolving pending relations: {e}")
         return ErrorCodes.RELATIONS_ERROR
         
+    # Write all buffered part rows to CSV using pandas
+    try:
+        write_parts_df_to_csv()
+    except Exception as e:
+        logger.error(f"Error writing parts DataFrame to CSV: {e}")
+
     return ErrorCodes.SUCCESS
