@@ -33,7 +33,8 @@ class ErrorCodes:
     
     # Supplier and manufacturer errors (60-69)
     SUPPLIER_ERROR = 60
-    
+    MANUFACTURER_ERROR = 61
+
     # Category errors (70-79)
     CATEGORY_ERROR = 70
     
