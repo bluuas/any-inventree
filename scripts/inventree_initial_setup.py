@@ -13,8 +13,10 @@ from utils.plugin import KiCadPlugin
 from utils.error_codes import ErrorCodes
 from utils.logging_utils import set_log_level
 from utils.units import create_default_units
-from utils.entity_resolver import resolve_category_string
+from utils.entity_resolver import resolve_entity, resolve_category_string
 from inventree.api import InvenTreeAPI
+from inventree.company import Company
+from inventree.part import PartCategory, ParameterTemplate
 
 logger = logging.getLogger('InvenTreeCLI')
 
@@ -31,6 +33,7 @@ def process_configuration_file(api: InvenTreeAPI, kicad: KiCadPlugin, filename: 
     df = pd.read_csv(filename, dtype=str)
     # process each column seperately: CATEGORY, MANUFACTURER, PARAMETER
     # start with creating the CATEGORIES
+    logger.info("Processing categories...")
     for category in df['CATEGORY'].dropna().unique():
         category_pk, error_code = resolve_category_string(api, category)
         if error_code != ErrorCodes.SUCCESS or category_pk is None:
@@ -42,13 +45,28 @@ def process_configuration_file(api: InvenTreeAPI, kicad: KiCadPlugin, filename: 
                 kicad.add_category(category_pk)
             elif category.endswith("critical"):
                 kicad.add_category(category_pk)
-    return
 
-    for idx, row in df.iterrows():
-        # Create parameter templates if PARAMETER exists
-        if 'PARAMETER' in row and pd.notna(row['PARAMETER']) and str(row['PARAMETER']).strip():
+    logger.info("Processing suppliers...")
+    for supplier in df["SUPPLIER"].dropna().unique():
+        pk = resolve_entity(api, Company, {"name": supplier, "is_supplier": True, "is_manufacturer": False})
+        if pk is None:
+            logger.error(f"Failed to resolve supplier for row: {supplier}")
+            return ErrorCodes.SUPPLIER_ERROR
+    
+    logger.info("Processing manufacturers...")
+    for manufacturer in df["MANUFACTURER"].dropna().unique():
+        pk = resolve_entity(api, Company, {"name": manufacturer, "is_supplier": False, "is_manufacturer": True})
+        if pk is None:
+            logger.error(f"Failed to resolve manufacturer for row: {manufacturer}")
+            return ErrorCodes.MANUFACTURER_ERROR
+
+    logger.info("Processing parameters...")
+    for parameter in df["PARAMETER"].dropna().unique():
+        if isinstance(parameter, str) and parameter.strip():
+            # Regex: wrap $WORD with double quotes if not already quoted
+            param_str = re.sub(r'(:\s*)\$([A-Za-z0-9_]+)', r'\1"$\2"', parameter)
             try:
-                param_str = str(row['PARAMETER'])
+                param_str = parameter
                 # Regex: wrap $WORD with double quotes if not already quoted
                 param_str = re.sub(r'(:\s*)\$([A-Za-z0-9_]+)', r'\1"$\2"', param_str)
                 param = json.loads(param_str)
@@ -61,7 +79,7 @@ def process_configuration_file(api: InvenTreeAPI, kicad: KiCadPlugin, filename: 
                         param['choices'] = ''
                 resolve_entity(api, ParameterTemplate, param)
             except Exception as e:
-                logger.error(f"Error processing parameter template at row {idx}: {e}. PARAMETER value: {row['PARAMETER']}")
+                logger.error(f"Error processing parameter template for parameter: {parameter}. Error: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="InvenTree Management CLI")
