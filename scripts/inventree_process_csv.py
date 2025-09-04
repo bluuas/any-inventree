@@ -10,7 +10,7 @@ import argparse
 import logging
 from utils.config import Config
 from utils.plugin import KiCadPlugin
-from utils.csv_processing import process_database_file, process_configuration_file
+from utils.csv_processing import process_database_file
 from utils.delete import delete_all, delete_entity_type, list_entity_types
 from utils.logging_utils import set_log_level
 from inventree.api import InvenTreeAPI
@@ -79,10 +79,10 @@ def main():
             logger.error(f"Error: The directory '{csv_source_dir}' does not exist.")
             return
         
-        # Process Configuration CSV files first
-        for filename in os.listdir(csv_source_dir):
-            if filename.endswith('Configuration.csv'):
-                process_configuration_file(api, os.path.join(csv_source_dir, filename))
+        # # Process Configuration CSV files first
+        # for filename in os.listdir(csv_source_dir):
+        #     if filename.endswith('Configuration.csv'):
+        #         process_configuration_file(api, os.path.join(csv_source_dir, filename))
 
         # Then process all other CSV files
         for filename in os.listdir(csv_source_dir):
