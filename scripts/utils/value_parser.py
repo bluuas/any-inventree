@@ -18,6 +18,8 @@ def parse_parameter_value(value_str, unit=''):
     - '4.7 nF', unit='F' -> ('4.7e-9', 4.7e-9)
     - '4.7 nF', unit='str' -> ('4.7 nF', None)
     - '1.2 kΩ', unit='Ω' -> ('1200', 1200)
+    - '0.5 mm', unit='mm' -> ('0.5', 0.5)
+    - '0.5 mm', unit='m' -> ('0.0005', 0.0005)
     - '100', unit='' -> ('100', 100)
     - '3.3e-6', unit='' -> ('3.3e-6', 3.3e-6)
     """
@@ -33,6 +35,20 @@ def parse_parameter_value(value_str, unit=''):
     si_prefixes = {
         'T': 1e12, 'G': 1e9, 'M': 1e6, 'k': 1e3, 'K': 1e3,
         'm': 1e-3, 'μ': 1e-6, 'u': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15
+    }
+
+    # Unit conversion factors (to base unit)
+    unit_factors = {
+        # length
+        'm': 1.0, 'mm': 1e-3, 'cm': 1e-2, 'um': 1e-6, 'μm': 1e-6,
+        # capacitance
+        'F': 1.0, 'nF': 1e-9, 'uF': 1e-6, 'μF': 1e-6, 'pF': 1e-12,
+        # resistance
+        'Ω': 1.0, 'kΩ': 1e3, 'MΩ': 1e6,
+        # inductance
+        'H': 1.0, 'mH': 1e-3, 'uH': 1e-6, 'μH': 1e-6,
+        # generic
+        '': 1.0,
     }
 
     # Pattern to match number with optional unit and prefix
@@ -60,9 +76,19 @@ def parse_parameter_value(value_str, unit=''):
         multiplier = si_prefixes.get(prefix, 1.0)
         numeric_value = base_value * multiplier
 
-        # If a target unit is specified and the parsed unit doesn't match, don't convert
+        # If a target unit is specified and the parsed unit doesn't match, try conversion
         if unit and unit != unit_part and unit_part:
-            return value_str, None
+            # Try to convert between compatible units
+            from_unit_full = unit_part if prefix == '' else prefix + unit_part
+            to_unit_full = unit
+            if from_unit_full in unit_factors and to_unit_full in unit_factors:
+                # Convert to target unit
+                value_in_base = numeric_value * unit_factors.get(unit_part, 1.0)
+                numeric_value = value_in_base / unit_factors[to_unit_full]
+                display_value = f"{numeric_value:.10g}"
+                return display_value, numeric_value
+            else:
+                return value_str, None
 
         # Format numeric_value in scientific notation if applicable
         display_value = f"{numeric_value:.10g}"  # Adjust precision as needed
