@@ -1,5 +1,5 @@
-Minimum Stock, Name, Category, Description, IPN, Link, Notes, Revision, Virtual
-0,R_0402_0R0_Jumper_50V_generic,Passive Component / Resistor / Metal thickfilm,generic Resistor 0402 (1005 Metric) 0 Ω Jumper ,R000001-1,http://inventree.localhost/part/1/,nan,0,True
-0,R_0402_0R0_Jumper_50V_Yageo_RC0402JR-070RL,Passive Component / Resistor / Metal thickfilm,Resistor 0402 (1005 Metric) 0 Ω Jumper ,R000002-2,http://inventree.localhost/part/2/,nan,0,False
-0,R_0402_0R0_Jumper_50V_VishayDale_CRCW04020000Z0ED,Passive Component / Resistor / Metal thickfilm,Resistor 0402 (1005 Metric) 0 Ω Jumper ,R000003-3,http://inventree.localhost/part/3/,nan,0,False
-0,R_0402_0R0_Jumper_50V_StackpoleElectronicsInc._RMCF0402ZT0R00,Passive Component / Resistor / Metal thickfilm,Resistor 0402 (1005 Metric) 0 Ω Jumper ,R000004-4,http://inventree.localhost/part/4/,nan,0,False
+PK, Minimum Stock, Name, Category, Description, IPN, Link, Notes, Revision, Virtual
+1,0,R_0402_0R0_Jumper_50V_generic,Passive Component / Resistor / Metal thickfilm,generic Resistor 0402 (1005 Metric) 0 Ω Jumper ,R000001-1,http://inventree.localhost/part/1/,,0,True
+2,0,R_0402_0R0_Jumper_50V_Yageo_RC0402JR-070RL,Passive Component / Resistor / Metal thickfilm,Resistor 0402 (1005 Metric) 0 Ω Jumper ,R000002-2,http://inventree.localhost/part/2/,,0,False
+3,0,R_0402_0R0_Jumper_50V_VishayDale_CRCW04020000Z0ED,Passive Component / Resistor / Metal thickfilm,Resistor 0402 (1005 Metric) 0 Ω Jumper ,R000003-3,http://inventree.localhost/part/3/,,0,False
+4,0,R_0402_0R0_Jumper_50V_StackpoleElectronicsInc._RMCF0402ZT0R00,Passive Component / Resistor / Metal thickfilm,Resistor 0402 (1005 Metric) 0 Ω Jumper ,R000004-4,http://inventree.localhost/part/4/,,0,False
