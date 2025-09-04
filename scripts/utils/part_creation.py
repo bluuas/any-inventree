@@ -31,6 +31,8 @@ def create_part(api: InvenTreeAPI, row, category_pk):
         description = row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else ''
         is_virtual = str(row['TYPE']).strip().lower() in ['generic', 'critical']
         revision = row['REVISION'] if not pd.isna(row['REVISION']) else '0'
+        # the designator is not an official field, but we use it for naming and the IPN
+        designator = row['DESIGNATOR'] if 'DESIGNATOR' in row and not pd.isna(row['DESIGNATOR']) else ''
 
         pk = resolve_entity(api, Part, {
             'name': name,
@@ -38,12 +40,14 @@ def create_part(api: InvenTreeAPI, row, category_pk):
             'description': description,
             'virtual': is_virtual,
             'revision': revision,
+            'designator': designator
         })
 
         if pk is None:
             logger.error(f"Failed to create part: {name}")
             return None, ErrorCodes.ENTITY_CREATION_FAILED
 
+        return pk, ErrorCodes.SUCCESS
         # Update part link and IPN
         try:
             site_url = get_site_url()

@@ -83,7 +83,7 @@ def resolve_category_string(api: InvenTreeAPI, category_string: str) -> tuple:
 
 def resolve_entity(api: InvenTreeAPI, entity_type, data):
     """
-    Resolve an entity by checking cache first, then API, then creating if needed.
+    Resolve an entity by checking cache first, then API (once), then creating if needed.
     Returns entity PK or None on failure.
     """
     identifiers = IDENTIFIER_LUT.get(entity_type, [])
@@ -95,53 +95,68 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
         cache = caches[entity_type]
         composite_key = tuple(str(data[identifier]) for identifier in identifiers if identifier in data)
 
-        # Check cache first
         entity_id = cache.get(composite_key)
         if entity_id is not None:
             logger.debug(f"{entity_type.__name__} '{composite_key}' found in cache with ID: {entity_id}")
             return entity_id
 
-        # Fetch all entities from the API and populate the cache
-        try:
-            entities = entity_type.list(api)
-            entity_dict = {
-                tuple(str(getattr(entity, identifier)) for identifier in identifiers): entity.pk 
-                for entity in entities
-            }
-            cache.update(entity_dict)
-        except Exception as e:
-            logger.error(f"Error fetching {entity_type.__name__} entities from API: {e}")
-            return None
+        # Only fetch from API if cache is empty
+        if not cache:
+            try:
+                entities = entity_type.list(api)
+                entity_dict = {
+                    tuple(str(getattr(entity, identifier)) for identifier in identifiers): entity.pk 
+                    for entity in entities
+                }
+                cache.update(entity_dict)
+            except Exception as e:
+                logger.error(f"Error fetching {entity_type.__name__} entities from API: {e}")
+                return None
 
-        # Check again after updating the cache
-        entity_id = cache.get(composite_key)
-        if entity_id is not None:
-            logger.debug(f"{entity_type.__name__} '{composite_key}' already exists in database with ID: {entity_id}")
-            return entity_id
+            # Check again after updating the cache
+            entity_id = cache.get(composite_key)
+            if entity_id is not None:
+                logger.debug(f"{entity_type.__name__} '{composite_key}' already exists in database with ID: {entity_id}")
+                return entity_id
+
+        # Create new entity if not found
+        pk = None
+        if writer.is_active():
+            try:
+                pk, error = writer.create(api, entity_type, data)
+                cache[composite_key] = pk
+                return pk
+            except Exception as e:
+                logger.error(f"Error creating new {entity_type.__name__} entity '{composite_key}': {e}")
+                return None
+        else:
+            try:
+                new_entity = entity_type.create(api, data)
+                pk = new_entity.pk
+                logger.debug(f"{entity_type.__name__} '{composite_key}' created successfully via API at ID: {pk}")
+                cache[composite_key] = pk
+                return pk
+            # Todo: refactor this code section
+            # catch exception if duplicated part already exists, fetch and try again
+            except Exception as e:
+                logger.error(f"Error creating new {entity_type.__name__} entity '{composite_key}': {e}")
+                entities = entity_type.list(api)
+                entity_dict = {
+                    tuple(str(getattr(entity, identifier)) for identifier in identifiers): entity.pk 
+                    for entity in entities
+                }
+                cache.update(entity_dict)
+                entity_id = cache.get(composite_key)
+                if entity_id is not None:
+                    logger.debug(f"{entity_type.__name__} '{composite_key}' already exists in database with ID: {entity_id}")
+                    return entity_id
+                else:
+                    logger.error(f"Error resolving entity for {entity_type.__name__}: {e}")
+                    return None
+
     except Exception as e:
         logger.error(f"Error resolving entity for {entity_type.__name__}: {e}")
         return None
-    
-    # Create new entity if not found
-    try:
-        pk = None
-        if writer.is_active():
-            pk, error = writer.create(api, entity_type, data)
-            if error == ErrorCodes.ENTITY_CREATION_FAILED or pk is None:
-                logger.warning(f"Writer failed to create {entity_type.__name__} entity '{composite_key}', falling back to API.")
-                new_entity = entity_type.create(api, data)
-                pk = new_entity.pk
-            return pk
-        else:
-            new_entity = entity_type.create(api, data)
-            pk = new_entity.pk
-            logger.debug(f"{entity_type.__name__} '{composite_key}' created successfully via API at ID: {pk}")
-            cache[composite_key] = pk
-            return pk
-    except Exception as e:
-        logger.error(f"Error creating new {entity_type.__name__} entity '{composite_key}': {e}")
-        return None
-
 
 def clear_entity_caches():
     """

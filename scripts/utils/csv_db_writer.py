@@ -83,7 +83,7 @@ class CsvDbWriter:
     @classmethod
     def get_next_id(cls, key):
         cls.ID_UPPER_LIMIT[key] += 1
-        return cls.ID_UPPER_LIMIT[key] - 1
+        return cls.ID_UPPER_LIMIT[key]
 
     @classmethod
     def write_df_to_csv(cls, df, columns, filename):
@@ -117,7 +117,7 @@ class CsvDbWriter:
         revision = data.get("revision", "0")
         notes = data.get("notes", "")
         is_virtual = str(data.get("type", "")).strip().lower() in ['generic', 'critical']
-        designator = data.get('designator [str]', '')
+        designator = data.get('designator', '')
         rev0_str = str(id).zfill(6)
         ipn = f"{designator}{rev0_str}-{id}"
 
@@ -174,10 +174,10 @@ class CsvDbWriter:
         id = cls.get_next_id("partparameter")
         out_row = {
             "id": id,
-            "data": data.get("display_value", ""),
-            "part_id": data.get("part_pk", ""),
-            "template_id": data.get("parameter_template_pk", ""),
-            "data_numeric": data.get("numeric_value", ""),
+            "data": data.get("data", ""),
+            "part_id": data.get("part", ""),
+            "template_id": data.get("template", ""),
+            "data_numeric": data.get("data_numeric", ""),
             "metadata": "{}"
         }
         cls.DB_PARTPARAMETER_ROWS.append(out_row)

@@ -58,7 +58,7 @@ def process_database_file(api, filename):
         part_pk, error_code = create_part(api, row, category_pk)
         if error_code != ErrorCodes.SUCCESS:
             logger.error(f"Failed to create part for row {i}: {row['NAME']}")
-            return ErrorCodes.PART_CREATION_ERROR
+            continue
 
         error_code = create_parameters(api, row, part_pk)
         if error_code != ErrorCodes.SUCCESS:
