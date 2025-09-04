@@ -10,7 +10,7 @@ from .part_creation import (
     create_part,
     create_parameters,
     create_suppliers_and_manufacturers,
-    write_parts_df_to_csv,
+    write_parts_db_csv,
 )
 from .stock import get_default_stock_location_pk
 from utils.entity_resolver import resolve_entity, resolve_category_string
@@ -38,7 +38,7 @@ def process_database_file(api, filename):
         logger.error(f"Error reading CSV file {filename}: {e}")
         return ErrorCodes.FILE_ERROR
 
-    for i, row in df.iloc[:4].iterrows():
+    for i, row in df.iloc[:4310].iterrows():
 
         # --------------------------------- category --------------------------------- #
         category_string = f"{row['CATEGORY']} / {row['TYPE']}"
@@ -61,27 +61,27 @@ def process_database_file(api, filename):
             logger.error(f"Failed to create part for row {i}: {row['NAME']}")
             return ErrorCodes.PART_CREATION_ERROR
 
-        error_code = create_parameters(api, row, part_pk)
-        if error_code != ErrorCodes.SUCCESS:
-            logger.warning(f"Failed to create parameters for row {i}: {row['NAME']}")
+        # error_code = create_parameters(api, row, part_pk)
+        # if error_code != ErrorCodes.SUCCESS:
+        #     logger.warning(f"Failed to create parameters for row {i}: {row['NAME']}")
             
-        error_code = create_suppliers_and_manufacturers(api, row, part_pk, get_default_stock_location_pk(api))
-        if error_code != ErrorCodes.SUCCESS:
-            logger.warning(f"Failed to create suppliers/manufacturers for row {i}: {row['NAME']}")
+        # error_code = create_suppliers_and_manufacturers(api, row, part_pk, get_default_stock_location_pk(api))
+        # if error_code != ErrorCodes.SUCCESS:
+        #     logger.warning(f"Failed to create suppliers/manufacturers for row {i}: {row['NAME']}")
             
         logger.info(f"Processed row {row.name} successfully: {row['NAME']}")
         
-    # resolve pending relations
-    try:
-        resolve_pending_relations(api)
-    except Exception as e:
-        logger.error(f"Error resolving pending relations: {e}")
-        return ErrorCodes.RELATIONS_ERROR
+    # # resolve pending relations
+    # try:
+    #     resolve_pending_relations(api)
+    # except Exception as e:
+    #     logger.error(f"Error resolving pending relations: {e}")
+    #     return ErrorCodes.RELATIONS_ERROR
         
-    # Write all buffered part rows to CSV using pandas
+    # Write all buffered part rows to DB CSV using pandas
     try:
-        write_parts_df_to_csv()
+        write_parts_db_csv()
     except Exception as e:
-        logger.error(f"Error writing parts DataFrame to CSV: {e}")
+        logger.error(f"Error writing parts DataFrame to DB CSV: {e}")
 
     return ErrorCodes.SUCCESS
