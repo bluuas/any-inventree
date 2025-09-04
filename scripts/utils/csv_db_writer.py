@@ -5,6 +5,7 @@ from .config import get_site_url
 from .error_codes import ErrorCodes
 
 from inventree.api import InvenTreeAPI
+from inventree.base import Attachment
 from inventree.company import ManufacturerPart
 from inventree.part import Part, Parameter, PartRelated
 
@@ -33,13 +34,17 @@ class CsvDbWriter:
     DB_MANUFACTURERPART_COLUMNS = [
         "id","MPN","link","description","manufacturer_id","part_id","metadata","barcode_data","barcode_hash","notes","name","keywords","ipn","image","minimum_stock","units","trackable","purchaseable","salable","active","bom_checksum","bom_checked_date","bom_checked_by_id","category_id","default_location_id","default_supplier_id","is_template","variant_of_id","assembly","component","virtual","revision","creation_date","creation_user_id","level","lft","rght","tree_id","default_expiry","base_cost","multiple","last_stocktake","responsible_owner_id","locked","revision_of_id","testable"
     ]
+    DB_ATTACHMENT_COLUMNS = [
+        "id","model_id","attachment","link","comment","upload_date","file_size","model_type","upload_user_id","metadata"
+    ]
     DB_PART_ROWS = []
     DB_PARTPARAMETER_ROWS = []
     DB_PARTRELATED_ROWS = []
     DB_MANUFACTURERPART_ROWS = []
-
+    DB_ATTACHMENT_ROWS = []
 
     ID_UPPER_LIMIT = {
+        "attachment": 0,
         "part": 0,
         "partparameter": 0,
         "partrelated": 0,
@@ -67,6 +72,11 @@ class CsvDbWriter:
         upper = max((man['pk'] for man in manufacturers), default=None)
         if upper is not None:
             cls.ID_UPPER_LIMIT["manufacturerpart"] = upper
+
+        attachments = Attachment.list(api)
+        upper = max((att['pk'] for att in attachments), default=None)
+        if upper is not None:
+            cls.ID_UPPER_LIMIT["attachment"] = upper
 
         logger.info(f"Fetched ID upper limits: {cls.ID_UPPER_LIMIT}")
 
@@ -250,6 +260,24 @@ class CsvDbWriter:
         }
         cls.DB_MANUFACTURERPART_ROWS.append(out_row)
         return id
+    
+    @classmethod
+    def add_attachment_db(cls, data):
+        id = cls.get_next_id("attachment")
+        out_row = {
+            "id": id,
+            "model_id": data.get("model_id", ""),
+            "attachment": data.get("attachment", ""),
+            "link": data.get("link", ""),
+            "comment": data.get("comment", ""),
+            "upload_date": data.get("upload_date", ""),
+            "file_size": data.get("file_size", ""),
+            "model_type": data.get("model_type", ""),
+            "upload_user_id": data.get("upload_user_id", ""),
+            "metadata": "{}"
+        }
+        cls.DB_ATTACHMENT_ROWS.append(out_row)
+        return id
 
     @classmethod
     def create(cls, api, entity_type, data) -> tuple:
@@ -272,6 +300,9 @@ class CsvDbWriter:
             return pk, ErrorCodes.SUCCESS
         elif entity_type.__name__ == "ManufacturerPart":
             pk = cls.add_manufacturerpart_db(data)
+            return pk, ErrorCodes.SUCCESS
+        elif entity_type.__name__ == "Attachment":
+            pk = cls.add_attachment_db(data)
             return pk, ErrorCodes.SUCCESS
         else:
             logger.warning(f"CsvDbWriter.create: Unsupported entity type {entity_type.__name__}")
