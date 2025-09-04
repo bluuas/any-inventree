@@ -36,8 +36,8 @@ def process_database_file(api, filename):
     except Exception as e:
         logger.error(f"Error reading CSV file {filename}: {e}")
         return ErrorCodes.FILE_ERROR
-        
-    for i, row in df.iloc[1000:1004].iterrows():
+
+    for i, row in df.iloc[:4].iterrows():
 
         # --------------------------------- category --------------------------------- #
         category_string = f"{row['CATEGORY']} / {row['TYPE']}"
@@ -78,33 +78,3 @@ def process_database_file(api, filename):
         return ErrorCodes.RELATIONS_ERROR
         
     return ErrorCodes.SUCCESS
-
-def process_configuration_file(api, filename):
-    """
-    Process a configuration CSV file to create all necessary part categories based on the CATEGORY hierarchy.
-    A Parameter can have references to other columns in the CSV file, for example when choices are defined.
-    In this case, the referenced column name is prefixed with a $ sign and the values from that column are inserted as comma-separated choices.
-    """
-    logger.info(f"Processing configuration file: {filename}")
-
-    import json
-    import re
-    df = pd.read_csv(filename, dtype=str)
-    for idx, row in df.iterrows():
-        # Create parameter templates if PARAMETER exists
-        if 'PARAMETER' in row and pd.notna(row['PARAMETER']) and str(row['PARAMETER']).strip():
-            try:
-                param_str = str(row['PARAMETER'])
-                # Regex: wrap $WORD with double quotes if not already quoted
-                param_str = re.sub(r'(:\s*)\$([A-Za-z0-9_]+)', r'\1"$\2"', param_str)
-                param = json.loads(param_str)
-                if 'choices' in param and isinstance(param['choices'], str) and param['choices'].startswith('$'):
-                    col_name = param['choices'][1:]
-                    if col_name in df.columns:
-                        choices = df[col_name].dropna().unique()
-                        param['choices'] = ', '.join(str(choice) for choice in choices if str(choice).strip())
-                    else:
-                        param['choices'] = ''
-                resolve_entity(api, ParameterTemplate, param)
-            except Exception as e:
-                logger.error(f"Error processing parameter template at row {idx}: {e}. PARAMETER value: {row['PARAMETER']}")
