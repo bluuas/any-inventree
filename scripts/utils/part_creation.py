@@ -25,7 +25,6 @@ def create_part(api: InvenTreeAPI, row, category_pk):
     try:
         name = f"{row['NAME']}".strip()
         if not name or pd.isna(row['NAME']):
-            logger.warning("Skipping row because 'NAME' is empty or NaN.")
             return None, ErrorCodes.INVALID_NAME
             
         description = row['DESCRIPTION'] if not pd.isna(row['DESCRIPTION']) else ''
@@ -60,18 +59,17 @@ def create_part(api: InvenTreeAPI, row, category_pk):
                 })
         except Exception as e:
             logger.warning(f"Failed to create attachment for part {pk}: {e}")
+
+        # # Update part link and IPN
+        # try:
             
-        return pk, ErrorCodes.SUCCESS
-        # Update part link and IPN
-        try:
-            
-            api.patch(url=f"part/{pk}/", data={'link': f"{site_url}/part/{pk}/"})
-            designator = row['DESIGNATOR [str]'] if not pd.isna(row['DESIGNATOR [str]']) else ''
-            rev0_pk = pk  # Placeholder for revision 0 part PK, TODO
-            rev0_str = str(rev0_pk).zfill(6)
-            api.patch(url=f"part/{pk}/", data={'IPN': f"{designator}{rev0_str}-{pk}"})
-        except Exception as e:
-            logger.warning(f"Failed to update part {pk} link or IPN: {e}")
+        #     api.patch(url=f"part/{pk}/", data={'link': f"{site_url}/part/{pk}/"})
+        #     designator = row['DESIGNATOR [str]'] if not pd.isna(row['DESIGNATOR [str]']) else ''
+        #     rev0_pk = pk  # Placeholder for revision 0 part PK, TODO
+        #     rev0_str = str(rev0_pk).zfill(6)
+        #     api.patch(url=f"part/{pk}/", data={'IPN': f"{designator}{rev0_str}-{pk}"})
+        # except Exception as e:
+        #     logger.warning(f"Failed to update part {pk} link or IPN: {e}")
 
         # get the part relations from RELATEDPARTS (comma separated string)
         try:

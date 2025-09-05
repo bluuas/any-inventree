@@ -56,7 +56,9 @@ def process_database_file(api, filename):
             
         # ----------------------------------- part ----------------------------------- #
         part_pk, error_code = create_part(api, row, category_pk)
-        if error_code != ErrorCodes.SUCCESS:
+        if error_code == ErrorCodes.INVALID_NAME:
+            logger.warning(f"Skipping row {i} due to invalid or missing part name.")
+        elif error_code != ErrorCodes.SUCCESS:
             logger.error(f"Failed to create part for row {i}: {row['NAME']}")
             continue
 
@@ -70,12 +72,12 @@ def process_database_file(api, filename):
             
         logger.info(f"Processed row {row.name} successfully: {row['NAME']}")
         
-    # # resolve pending relations
-    # try:
-    #     resolve_pending_relations(api)
-    # except Exception as e:
-    #     logger.error(f"Error resolving pending relations: {e}")
-    #     return ErrorCodes.RELATIONS_ERROR
+    # resolve pending relations
+    try:
+        resolve_pending_relations(api)
+    except Exception as e:
+        logger.error(f"Error resolving pending relations: {e}")
+        return ErrorCodes.RELATIONS_ERROR
         
     # Write all buffered part rows to DB CSV using pandas
     try:

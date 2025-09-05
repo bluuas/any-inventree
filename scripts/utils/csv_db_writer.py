@@ -204,8 +204,8 @@ class CsvDbWriter:
         id = cls.get_next_id("partrelated")
         out_row = {
             "id": id,
-            "part_1_id": data.get("part_1_id", ""),
-            "part_2_id": data.get("part_2_id", ""),
+            "part_1_id": data.get("part_1", ""),
+            "part_2_id": data.get("part_2", ""),
             "metadata": "{}",
             "note": data.get("note", "")
         }
@@ -269,8 +269,8 @@ class CsvDbWriter:
             "attachment": data.get("attachment", ""),
             "link": data.get("link", ""),
             "comment": data.get("comment", ""),
-            "upload_date": data.get("upload_date", ""),
-            "file_size": data.get("file_size", ""),
+            "upload_date": data.get("upload_date", "2025-09-04"),
+            "file_size": data.get("file_size", "0"),
             "model_type": data.get("model_type", ""),
             "upload_user_id": "1",
             "metadata": "{}"
