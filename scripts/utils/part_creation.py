@@ -50,6 +50,7 @@ def create_part(api: InvenTreeAPI, row, category_pk):
         try:
             site_url = get_site_url()
             datasheet_link = f"{site_url}/part/{pk}/" if is_virtual else row['DATASHEET_LINK'] if not pd.isna(row['DATASHEET_LINK']) else ''
+            revision = row['DATASHEET_REVISION'] if 'DATASHEET_REVISION' in row and not pd.isna(row['DATASHEET_REVISION']) else ''
             if datasheet_link:
                 resolve_entity(api, Attachment, {
                     'link': datasheet_link,
@@ -126,6 +127,9 @@ def create_parameters(api: InvenTreeAPI, row, pk):
                     continue
 
                 raw_value = row[param_col]
+                if pd.isna(raw_value) or not str(raw_value).strip():
+                    logger.debug(f"Skipping empty parameter '{param_col}' for part {pk}.")
+                    continue
                 logger.debug(f"Parsing value: {raw_value}, unit: {param_unit}")
                 display_value, numeric_value = parse_parameter_value(raw_value, param_unit)
                 logger.debug(f"Parsed value: display='{display_value}', numeric={numeric_value}")

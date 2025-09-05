@@ -38,7 +38,7 @@ def process_database_file(api, filename):
         return ErrorCodes.FILE_ERROR
 
     for i, row in df.iloc[:].iterrows():
-
+        error_code = None
         # --------------------------------- category --------------------------------- #
         category_string = f"{row['CATEGORY']} / {row['TYPE']}"
         if pd.isna(category_string):
@@ -63,14 +63,13 @@ def process_database_file(api, filename):
             continue
 
         error_code = create_parameters(api, row, part_pk)
-        if error_code != ErrorCodes.SUCCESS:
-            logger.warning(f"Failed to create parameters for row {i}: {row['NAME']}")
-            
         error_code = create_suppliers_and_manufacturers(api, row, part_pk, get_default_stock_location_pk(api))
-        if error_code != ErrorCodes.SUCCESS:
-            logger.warning(f"Failed to create suppliers/manufacturers for row {i}: {row['NAME']}")
+
+        if error_code == ErrorCodes.SUCCESS:
+            logger.info(f"Processed row {row.name} successfully: {row['NAME']}")
+        else:
+            logger.error(f"Error processing row {row.name}: {row['NAME']} (Error code: {error_code})")
             
-        logger.info(f"Processed row {row.name} successfully: {row['NAME']}")
         
     # resolve pending relations
     try:
