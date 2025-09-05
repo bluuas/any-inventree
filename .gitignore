@@ -124,3 +124,4 @@ inventree-data-copy/
 .$overview.drawio.bkp
 notes.txt
 scripts/gsheet-database/*
+scripts/csv-output/*
