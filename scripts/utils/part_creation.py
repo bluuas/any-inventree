@@ -46,21 +46,10 @@ def create_part(api: InvenTreeAPI, row, category_pk):
         if pk is None:
             logger.error(f"Failed to create part: {name}")
             return None, ErrorCodes.ENTITY_CREATION_FAILED
-
-        return pk, ErrorCodes.SUCCESS
-        # Update part link and IPN
-        try:
-            site_url = get_site_url()
-            api.patch(url=f"part/{pk}/", data={'link': f"{site_url}/part/{pk}/"})
-            designator = row['DESIGNATOR [str]'] if not pd.isna(row['DESIGNATOR [str]']) else ''
-            rev0_pk = pk  # Placeholder for revision 0 part PK, TODO
-            rev0_str = str(rev0_pk).zfill(6)
-            api.patch(url=f"part/{pk}/", data={'IPN': f"{designator}{rev0_str}-{pk}"})
-        except Exception as e:
-            logger.warning(f"Failed to update part {pk} link or IPN: {e}")
-
+        
         # Attach datasheet for specific parts, add link to itself for virtual parts
         try:
+            site_url = get_site_url()
             datasheet_link = f"{site_url}/part/{pk}/" if is_virtual else row['DATASHEET_LINK'] if not pd.isna(row['DATASHEET_LINK']) else ''
             if datasheet_link:
                 resolve_entity(api, Attachment, {
@@ -71,6 +60,18 @@ def create_part(api: InvenTreeAPI, row, category_pk):
                 })
         except Exception as e:
             logger.warning(f"Failed to create attachment for part {pk}: {e}")
+            
+        return pk, ErrorCodes.SUCCESS
+        # Update part link and IPN
+        try:
+            
+            api.patch(url=f"part/{pk}/", data={'link': f"{site_url}/part/{pk}/"})
+            designator = row['DESIGNATOR [str]'] if not pd.isna(row['DESIGNATOR [str]']) else ''
+            rev0_pk = pk  # Placeholder for revision 0 part PK, TODO
+            rev0_str = str(rev0_pk).zfill(6)
+            api.patch(url=f"part/{pk}/", data={'IPN': f"{designator}{rev0_str}-{pk}"})
+        except Exception as e:
+            logger.warning(f"Failed to update part {pk} link or IPN: {e}")
 
         # get the part relations from RELATEDPARTS (comma separated string)
         try:
@@ -153,7 +154,6 @@ def create_suppliers_and_manufacturers(api: InvenTreeAPI, row, part_pk, stock_lo
     Create suppliers, manufacturers, and stock items for specific parts.
     Returns error code.
     """
-    return
     try:
         manufacturer_name = row.get('MANUFACTURER')
         mpn = row.get('MPN')
@@ -182,14 +182,18 @@ def create_suppliers_and_manufacturers(api: InvenTreeAPI, row, part_pk, stock_lo
             except Exception as e:
                 logger.error(f"Failed to create manufacturer part: {e}")
                 return ErrorCodes.SUPPLIER_ERROR
-                
-            # Dynamically get all suppliers by checking columns that start with 'SUPPLIER' followed by a number
-            supplier_cols = [col for col in row.index if col.startswith('SUPPLIER') and col[len('SUPPLIER'):].isdigit()]
+
+            # Dynamically get all suppliers by checking columns that start with 'SUPPLIER' followed by a number, then followed by anything else
+            # e.g. SUPPLIER1_NAME, SUPPLIER1_SKU, SUPPLIER1_STATUS
+            import re
+            supplier_pattern = re.compile(r'^SUPPLIER(\d+)_NAME$')
+            supplier_cols = [col for col in row.index if supplier_pattern.match(col)]
             for supplier_col in supplier_cols:
                 try:
-                    i = supplier_col[len('SUPPLIER'):]
+                    match = supplier_pattern.match(supplier_col)
+                    i = match.group(1) if match else ''
                     supplier_name = row[supplier_col]
-                    if pd.isna(supplier_name):
+                    if pd.isna(supplier_name) or not str(supplier_name).strip():
                         logger.debug(f"Skipping supplier {i} because it is empty")
                         continue
 
@@ -203,10 +207,12 @@ def create_suppliers_and_manufacturers(api: InvenTreeAPI, row, part_pk, stock_lo
                         logger.warning(f"Failed to create or find supplier: {supplier_name}")
                         continue
 
+                    sku_col = f'SUPPLIER{i}_SKU'
+                    sku = row.get(sku_col, None)
                     supplier_part_pk = resolve_entity(api, SupplierPart, {
                         'part': part_pk,
                         'supplier': supplier_pk,
-                        'SKU': row.get(f'SKU{i}', None),
+                        'SKU': sku,
                     })
                     
                     if not supplier_part_pk:

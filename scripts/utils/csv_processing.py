@@ -64,9 +64,9 @@ def process_database_file(api, filename):
         if error_code != ErrorCodes.SUCCESS:
             logger.warning(f"Failed to create parameters for row {i}: {row['NAME']}")
             
-        # error_code = create_suppliers_and_manufacturers(api, row, part_pk, get_default_stock_location_pk(api))
-        # if error_code != ErrorCodes.SUCCESS:
-        #     logger.warning(f"Failed to create suppliers/manufacturers for row {i}: {row['NAME']}")
+        error_code = create_suppliers_and_manufacturers(api, row, part_pk, get_default_stock_location_pk(api))
+        if error_code != ErrorCodes.SUCCESS:
+            logger.warning(f"Failed to create suppliers/manufacturers for row {i}: {row['NAME']}")
             
         logger.info(f"Processed row {row.name} successfully: {row['NAME']}")
         

@@ -124,6 +124,11 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
         if writer.is_active():
             try:
                 pk, error = writer.create(api, entity_type, data)
+                # todo: handle error case and refactor duplicated code
+                if error == ErrorCodes.ENTITY_CREATION_FAILED:
+                    new_entity = entity_type.create(api, data)
+                    pk = new_entity.pk
+                    
                 cache[composite_key] = pk
                 return pk
             except Exception as e:
