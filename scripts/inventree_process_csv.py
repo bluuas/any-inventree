@@ -14,12 +14,14 @@ from utils.csv_processing import process_database_file
 from utils.delete import delete_all, delete_entity_type, list_entity_types
 from utils.logging_utils import set_log_level
 from inventree.api import InvenTreeAPI
+from utils.csv_db_writer import csv_db_writer
 
 logger = logging.getLogger('InvenTreeCLI')
 
 def main():
     parser = argparse.ArgumentParser(description="InvenTree Management CLI")
     parser.add_argument('--directory', help='Directory containing CSV files to process, relative to main.py')
+    parser.add_argument('--method', choices=['API', 'CSV'], default='API', help='Method to use for part creation.')
     parser.add_argument('--delete-all', action='store_true', help='Delete all parts and entities')
     parser.add_argument('--delete-entity', help='Delete all instances of a specific entity type (e.g., Parameter, Part)')
     parser.add_argument('--list-entities', action='store_true', help='List all available entity types that can be deleted')
@@ -53,6 +55,13 @@ def main():
     credentials = Config.get_api_credentials()
     api = InvenTreeAPI(credentials['url'], username=credentials['username'], password=credentials['password'])
     
+    # Activate / Deactivate the CsvDbWriter based on --method argument
+    if args.method.upper() == 'CSV':
+        csv_db_writer.set_active(True)
+        logger.info("CSV DB Writer is ACTIVE")
+    else:
+        csv_db_writer.set_active(False)
+        logger.info("CSV DB Writer is INACTIVE")
     if args.delete_all:
         delete_all(api)
         return

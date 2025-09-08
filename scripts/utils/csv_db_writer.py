@@ -12,12 +12,16 @@ from inventree.part import Part, Parameter, PartRelated
 logger = logging.getLogger('InvenTreeCLI')
 
 class CsvDbWriter:
-    CSV_DB_WRITER_IS_ACTIVE = True
+    CSV_DB_WRITER_IS_ACTIVE = False
     _id_counters_fetched = False
 
     @classmethod
     def is_active(cls):
         return cls.CSV_DB_WRITER_IS_ACTIVE
+    
+    @classmethod
+    def set_active(cls, active: bool):
+        cls.CSV_DB_WRITER_IS_ACTIVE = active
 
     DB_PART_COLUMNS = [
         "id","name","description","keywords","IPN","link","image","minimum_stock","units","trackable","purchaseable","salable","active","notes",
@@ -59,6 +63,7 @@ class CsvDbWriter:
 
     @classmethod
     def fetch_id_counters(cls, api: InvenTreeAPI):
+        return
         parts = Part.list(api)
         upper = max((part['pk'] for part in parts), default=None)
         if upper is not None:
