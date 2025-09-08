@@ -20,8 +20,10 @@ def parse_parameter_value(value_str, unit=''):
     - '1.2 kΩ', unit='Ω' -> ('1200', 1200)
     - '0.5 mm', unit='mm' -> ('0.5', 0.5)
     - '0.5 mm', unit='m' -> ('0.0005', 0.0005)
-    - '100', unit='' -> ('100', 100)
+    - '100', unit='' -> ('100', 100)    
     - '3.3e-6', unit='' -> ('3.3e-6', 3.3e-6)
+    - '65 °C', unit='°C' -> ('65', 65)
+    - '- 65 °C', unit='°C' -> ('-65', -65)
     """
 
     if pd.isna(value_str) or not str(value_str).strip():
@@ -30,6 +32,8 @@ def parse_parameter_value(value_str, unit=''):
     value_str = str(value_str).strip()
     if unit == "str":
         return value_str, None
+    # Handle a space between minus and number, e.g., "- 65" -> "-65"
+    value_str = re.sub(r"^-\s+(\d)", r"-\1", value_str)
 
     # SI prefixes mapping
     si_prefixes = {
