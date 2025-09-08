@@ -48,6 +48,8 @@ def process_configuration_file(api: InvenTreeAPI, kicad: KiCadPlugin, filename: 
 
     logger.info("Processing suppliers...")
     for supplier in df["SUPPLIER"].dropna().unique():
+        if supplier == "-":
+            continue
         pk = resolve_entity(api, Company, {"name": supplier, "is_supplier": True, "is_manufacturer": False})
         if pk is None:
             logger.error(f"Failed to resolve supplier for row: {supplier}")
@@ -55,6 +57,8 @@ def process_configuration_file(api: InvenTreeAPI, kicad: KiCadPlugin, filename: 
     
     logger.info("Processing manufacturers...")
     for manufacturer in df["MANUFACTURER"].dropna().unique():
+        if manufacturer == "-":
+            continue
         pk = resolve_entity(api, Company, {"name": manufacturer, "is_supplier": False, "is_manufacturer": True})
         if pk is None:
             logger.error(f"Failed to resolve manufacturer for row: {manufacturer}")
