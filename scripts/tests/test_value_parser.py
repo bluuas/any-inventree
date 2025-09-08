@@ -15,7 +15,13 @@ from utils.value_parser import parse_parameter_value
         ("", "F", ("-", None)),
         ("", "str", ("-", None)),
         ("asdf", "str", ("asdf", None)),
-        ("1μF", "F", ("1e-6", 1e-6))
+        ("1μF", "F", ("1e-6", 1e-6)),
+        ("65 °C", "°C", ("65", 65)),
+        ("- 65 °C", "°C", ("-65", -65)),
+        ("-65°C", "°C", ("-65", -65)),
+        ("12.5kΩ", "Ω", ("12500", 12500)),
+        ("7.2 MΩ", "Ω", ("7200000", 7200000)),
+        ("3.3e3", "Ω", ("3300", 3300))
     ]
 )
 def test_parse_parameter_value_cases(value_str, unit, expected):
