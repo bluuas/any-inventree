@@ -1,18 +1,21 @@
-# any-inventree
+# inventree-project
 
-## Initial InvenTree Database Setup
+This repository contains the InvenTree Docker deployment configuration and related files.
 
-### Environment Configuration
+## Initial Setup
 
-Copy the `.env-example` file and rename it to `.env`. Configure the environment variables as needed.
-For this basic setup, we will configure `INVENTREE_ADMIN_USER`, `INVENTREE_ADMIN_PASSWORD` and `INVENTREE_ADMIN_EMAIL`
+### Environment Variables
+
+Configure the environment variables as needed.
+For this basic setup, we will configure
+- `INVENTREE_ADMIN_USER`
+- `INVENTREE_ADMIN_PASSWORD`
+- `INVENTREE_ADMIN_EMAIL`
 
 ### Install Docker
+<details>
 
 Follow the [installation guide from InvenTree](https://docs.inventree.org/en/latest/start/docker_install/).
-
-<details>
-<summary>Ubuntu</summary>
 
 ```bash
 sudo apt update
@@ -51,123 +54,113 @@ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin 
 [Linux post-installation steps for Docker Engine](https://docs.docker.com/engine/install/linux-postinstall/)
 
 ```bash
+# Create the docker group
 sudo groupadd docker
+# add user to docker group
 sudo usermod -aG docker $USER
+# run the following command to log in to a new group:
+newgrp docker
+# check if your user has docker group membership by running:
+groups
+# once done, try running one of the docker commands:
+docker ps
 ```
-Log out and log back in to apply the group changes.
-
 </details>
 
-### Database Migration
+After installing all the required dependencies, run the following command in the source directory to initialize the database:
 
-Run in source directory:
 ```bash
 docker compose run --rm inventree-server invoke update
 ```
 
-and start the container with `docker compose up` (`-d` if you want to run it in detached mode)
-
-## Save and Load Backups
-
-To create a backup of your InvenTree database, you can use the following command:
+and start the container with 
 
 ```bash
-sudo docker compose run --rm inventree-server invoke export-records -f 'data/data.json'
+docker compose up
+# or -d if you want to run it in detached mode
 ```
 
-To restore a backup, use the following command:
+You should now be able to access the InvenTree web interface at http://short-circuits.sandbox.anybotics.com or http://inventree.localhost, depending on your configuration
+
+## Migrating Data to a Different Database
+
+[InvenTree Data Migration](https://docs.inventree.org/en/stable/start/migrate/)
+
+### Export Data
 
 ```bash
-sudo docker compose run --rm inventree-server invoke import-records -c -f 'data/data.json'
+docker compose run inventree-server invoke export-records -f data/data-export.json
 ```
 
-## Use the InvenTree API Scripts
+### Import Data
 
-### Virtual Environment
+**NOTE:** did not work for me so far
 
-Create a virtual environment for your InvenTree API project by running the following command in the project directory:
+**UPDATE:** only works if the database is empty
+
+<details>
 
 ```bash
-python -m venv .venv
+docker compose run inventree-server invoke import-records -c -f data/data-export.json
+```
+```bash
+(.venv) lu@tplb:~/any/github/any-inventree$ docker compose run --rm inventree-server invoke import-records -c -f 'data/data-export.json'
+[+] Creating 2/2
+ ✔ Container inventree-cache  Running                                      0.0s 
+ ✔ Container inventree-db     Running                                      0.0s 
+Loading config file : /home/inventree/data/config.yaml
+Deleting all data from InvenTree database...
+Python version 3.11.9 - /usr/local/bin/python3
+/root/.local/lib/python3.11/site-packages/allauth/exceptions.py:9: UserWarning: allauth.exceptions is deprecated, use allauth.core.exceptions
+  warnings.warn("allauth.exceptions is deprecated, use allauth.core.exceptions")
+CommandError: Database inventree couldn't be flushed. Possible reasons:
+  * The database isn't running or isn't configured correctly.
+  * At least one of the expected database tables doesn't exist.
+  * The SQL was invalid.
+Hint: Look at the output of 'django-admin sqlflush'. That's the SQL this command wasn't able to run.
+ERROR: InvenTree command failed: 'python3 manage.py flush --noinput'
+- Refer to the error messages in the log above for more information
 ```
 
-### Activate the Virtual Environment
+[InvenTree command failed: 'python3 manage.py](https://github.com/inventree/InvenTree/issues/9592)
+```bash
+sudo apt-get install libpq-dev
+pip install psycopg2 pgcli
+```
+</details>
 
-#### On Windows
+## Backups
+
+Note that a [backup](https://docs.inventree.org/en/stable/start/backup/) operation is not the same as [migrating data](https://docs.inventree.org/en/stable/start/migrate/). While data migration exports data into a database-agnostic JSON file, backup exports a native database file and media file archive.
+
+### Perform Manual Backup
 
 ```bash
-.venv\Scripts\activate
+docker compose run --rm inventree-server invoke backup
 ```
 
-#### On macOS and Linux
+### Restore Backup
 
 ```bash
-source .venv/bin/activate
+docker compose run --rm inventree-server invoke restore
 ```
 
-### Install Required Packages
+## Using a VPN
 
-Once the virtual environment is activated, install the required packages listed in `requirements.txt`
-```bash
-pip install -r scripts/requirements.txt
-```
+To access the short-circuits.sandbox.anybotics.com domain via VPN, you have to add some configuration to your Anybotics VPN:
 
-## Usage
+1. Open the settings of the Anybotics VPN client
+2. Switch to the IPv4 Tab
+3. Add a new route for the InvenTree domain:
+  - Address: `18.153.69.123`
+  - Netmask: `255.255.255.255`
+  - Gateway: `10.0.0.254`
 
-### Create Parts from CSV
+*Note: if this does not work, you may have to update the IP address. This you can find out by running `ping short-circuits.sandbox.anybotics.com`*
 
-Process CSV files to create parts, categories, parameters, and suppliers:
+## DBeaver
 
-```bash
-cd scripts
-python inventree_create_parts.py --directory ../data --log-level INFO --verbose
-```
-
-### Delete All Data
-
-To clean up the database (use with caution):
-
-```bash
-cd scripts
-python inventree_create_parts.py --delete-all --log-level INFO
-```
-
-### Resolve BOM Substitutes
-
-Process a BOM file to resolve part relations and substitutes:
-
-```bash
-cd scripts
-python resolve_bom.py -f /path/to/bom.csv
-```
-
-### Create Assembly from BOM
-
-Create an assembly part with BOM items from a CSV file:
-
-```bash
-cd scripts
-python create_assembly_from_bom.py -f /path/to/bom.csv
-```
-
-### Command Line Options
-
-- `--log-level`: Set logging level (DEBUG, INFO, WARNING, ERROR)
-- `--verbose`: Print configuration details
-- `--directory`: Directory containing CSV files to process
-- `--delete-all`: Delete all parts and entities (use with caution)
-
-### Deactivate the Virtual Environment
-
-You can deactivate the virtual environment by running:
-
-```bash
-deactivate
-```
-
-# DBeaver
-
-To edit the database locally, you can use DBeaver:
+To access the PostgreSQL database, you can use DBeaver:
 
 1. Install DBeaver from [here](https://dbeaver.io/download/).
 2. Find the IP address of the `inventree-db` container by running the following command in the terminal:
@@ -176,14 +169,22 @@ To edit the database locally, you can use DBeaver:
     docker ps -q | xargs -I{} sh -c "docker inspect -f '{{.Name}}: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' {}"
     ```
 
-    typically it would be something like `172.18.0.4`
+    typically it would be something like `172.19.0.2`
 3. Create a new connection in DBeaver using the following details:
-   - Host: use the IP address you found in step 2
-   - Port: 5432
-   - Database: inventree
-   - User: user (find the username in the .env file)
-   - Password: user (find the password in the .env file)
+  - Host: use the IP address you found in step 2
+  - Port: 5432 *(or the port specified in the .env file)*
+  - Database: inventree
+  - User: user (find the username in the .env file)
+  - Password: user (find the password in the .env file)
 4. If the database is hosted on a remote server, connect via ssh tunnel first
+
+<details>
+
+![Postgres Configuration Main](assets/postgres-configuration-main.jpg)
+
+![Postgres Configuration SSH](assets/postgres-configuration-ssh.jpg)
+
+</details>
 
 ## Notes for cleaning up...
 
