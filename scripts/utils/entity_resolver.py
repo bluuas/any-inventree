@@ -10,7 +10,7 @@ from inventree.company import Company, SupplierPart, ManufacturerPart
 from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, PartRelated, BomItem
 from inventree.stock import StockItem, StockLocation
 from .error_codes import ErrorCodes
-from .csv_db_writer import CsvDbWriter
+from .csv_db_writer import csv_db_writer
 
 logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
@@ -46,11 +46,6 @@ IDENTIFIER_LUT = {
     StockLocation: ['name'],
     SupplierPart: ['SKU'],
 }
-
-writer = CsvDbWriter()
-
-def resolving_complete():
-    writer.write_all_db_csv()
 
 def resolve_category_string(api: InvenTreeAPI, category_string: str) -> tuple:
     """
@@ -102,28 +97,30 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
 
         # Only fetch from API if cache is empty
         if not cache:
-            try:
-                entities = entity_type.list(api)
-                entity_dict = {
-                    tuple(str(getattr(entity, identifier)) for identifier in identifiers): entity.pk 
-                    for entity in entities
-                }
-                cache.update(entity_dict)
-            except Exception as e:
-                logger.error(f"Error fetching {entity_type.__name__} entities from API: {e}")
-                return None
+            # skip fetching if entity_type is Attachment, Part, PartParameter, PartRelated, ManufacturerPart, SupplierPart
+            if entity_type not in {Part, Attachment, Parameter, PartRelated, ManufacturerPart, SupplierPart}:
+                try:
+                    entities = entity_type.list(api)
+                    entity_dict = {
+                        tuple(str(getattr(entity, identifier)) for identifier in identifiers): entity.pk 
+                        for entity in entities
+                    }
+                    cache.update(entity_dict)
+                except Exception as e:
+                    logger.error(f"Error fetching {entity_type.__name__} entities from API: {e}")
+                    return None
 
-            # Check again after updating the cache
-            entity_id = cache.get(composite_key)
-            if entity_id is not None:
-                logger.debug(f"{entity_type.__name__} '{composite_key}' already exists in database with ID: {entity_id}")
-                return entity_id
+                # Check again after updating the cache
+                entity_id = cache.get(composite_key)
+                if entity_id is not None:
+                    logger.debug(f"{entity_type.__name__} '{composite_key}' already exists in database with ID: {entity_id}")
+                    return entity_id
 
         # Create new entity if not found
         pk = None
-        if writer.is_active():
+        if csv_db_writer.is_active():
             try:
-                pk, error = writer.create(api, entity_type, data)
+                pk, error = csv_db_writer.create(api, entity_type, data)
                 # todo: handle error case and refactor duplicated code
                 if error == ErrorCodes.ENTITY_CREATION_FAILED:
                     new_entity = entity_type.create(api, data)

@@ -6,6 +6,7 @@ from utils.logging_utils import get_configured_level
 from utils.entity_resolver import resolve_entity
 from inventree.part import Part, PartRelated
 from .error_codes import ErrorCodes
+from .csv_db_writer import csv_db_writer
 
 logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
@@ -39,7 +40,10 @@ def resolve_pending_relations(api):
         logger.info(f"Resolving {len(_pending_relations)} pending part relations...")
 
         # resolve all part names to their primary keys
-        parts = Part.list(api)
+        if csv_db_writer.is_active():
+            parts = csv_db_writer.list_parts()
+        else:
+            parts = Part.list(api)
         part_lookup = {part['name']: part['pk'] for part in parts}
         
         success_count = 0

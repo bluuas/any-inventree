@@ -12,10 +12,11 @@ from .part_creation import (
     create_suppliers_and_manufacturers,
 )
 from .stock import get_default_stock_location_pk
-from utils.entity_resolver import resolve_entity, resolve_category_string, resolving_complete
+from utils.entity_resolver import resolve_entity, resolve_category_string
 from inventree.part import Part, ParameterTemplate
 from .relation_utils import resolve_pending_relations
 from .error_codes import ErrorCodes
+from .csv_db_writer import csv_db_writer
 
 logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
@@ -58,6 +59,7 @@ def process_database_file(api, filename):
         part_pk, error_code = create_part(api, row, category_pk)
         if error_code == ErrorCodes.INVALID_NAME:
             logger.warning(f"Skipping row {i} due to invalid or missing part name.")
+            continue
         elif error_code != ErrorCodes.SUCCESS:
             logger.error(f"Failed to create part for row {i}: {row['NAME']}")
             continue
@@ -80,7 +82,7 @@ def process_database_file(api, filename):
         
     # Write all buffered part rows to DB CSV using pandas
     try:
-        resolving_complete()
+        csv_db_writer.write_all_db_csv()
     except Exception as e:
         logger.error(f"Error writing parts DataFrame to DB CSV: {e}")
 

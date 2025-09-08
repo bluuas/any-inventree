@@ -97,6 +97,10 @@ class CsvDbWriter:
         return cls.ID_UPPER_LIMIT[key]
 
     @classmethod
+    def list_parts(cls):
+        return [{"pk": row["id"], "name": row["name"]} for row in cls.DB_PART_ROWS]
+    
+    @classmethod
     def write_df_to_csv(cls, df, columns, filename):
         try:
             output_dir = os.path.join(os.path.dirname(__file__), "../csv-output")
@@ -123,7 +127,6 @@ class CsvDbWriter:
 
     @classmethod
     def add_part_row_db(cls, data):
-        logger.info(f"Adding part row to DB: {data}")
         id = cls.get_next_id("part")
         category_pk = data.get("category", "")
         name = data.get("name", "")
@@ -171,7 +174,7 @@ class CsvDbWriter:
             "rght": str(id+1),
             "tree_id": "1",
             "default_expiry": "0",
-            "base_cost": "0.000000",
+            "base_cost": "0",
             "multiple": "1",
             "metadata": "{}",
             "barcode_data": "",
@@ -240,21 +243,21 @@ class CsvDbWriter:
             "link": "",
             "description": "",
             "note": "",
-            "base_cost": "",
+            "base_cost": "0",
             "packaging": "",
-            "multiple": "",
+            "multiple": "0",
             "part_id": data.get("part", ""),
             "supplier_id": data.get("supplier", ""),
             "manufacturer_part_id": "",
             "availability_updated": "",
-            "available": "",
+            "available": "1",
             "barcode_data": "",
             "barcode_hash": "",
             "updated": "",
             "metadata": "{}",
             "pack_quantity": "",
             "pack_quantity_native": "",
-            "active": "",
+            "active": "true",
             "notes": ""
         }
         cls.DB_SUPPLIERPART_ROWS.append(out_row)
@@ -309,3 +312,6 @@ class CsvDbWriter:
         else:
             logger.warning(f"CsvDbWriter.create: Unsupported entity type {entity_type.__name__}")
             return None, ErrorCodes.ENTITY_CREATION_FAILED
+        
+# Create a singleton instance of CsvDbWriter for use in other utils
+csv_db_writer = CsvDbWriter
