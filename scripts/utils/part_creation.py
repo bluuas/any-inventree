@@ -51,10 +51,11 @@ def create_part(api: InvenTreeAPI, row, category_pk):
             site_url = get_site_url()
             datasheet_link = f"{site_url}/part/{pk}/" if is_virtual else row['DATASHEET_LINK'] if not pd.isna(row['DATASHEET_LINK']) else ''
             revision = row['DATASHEET_REVISION'] if 'DATASHEET_REVISION' in row and not pd.isna(row['DATASHEET_REVISION']) else ''
+            comment = revision if revision else "datasheet"
             if datasheet_link:
                 resolve_entity(api, Attachment, {
                     'link': datasheet_link,
-                    'comment': 'datasheet',
+                    'comment': comment,
                     'model_type': 'part',
                     'model_id': pk,
                 })
