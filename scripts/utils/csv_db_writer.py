@@ -128,7 +128,7 @@ class CsvDbWriter:
         cls.write_df_to_csv(pd.DataFrame(cls.DB_PARTRELATED_ROWS), cls.DB_PARTRELATED_COLUMNS, "part_partrelated.csv")
         cls.write_df_to_csv(pd.DataFrame(cls.DB_MANUFACTURERPART_ROWS), cls.DB_MANUFACTURERPART_COLUMNS, "company_manufacturerpart.csv")
         cls.write_df_to_csv(pd.DataFrame(cls.DB_ATTACHMENT_ROWS), cls.DB_ATTACHMENT_COLUMNS, "inventree_attachment.csv")
-        cls.write_df_to_csv(pd.DataFrame(cls.DB_SUPPLIERPART_ROWS), cls.DB_SUPPLIERPART_COLUMNS, "company_supplierpart.csv")
+        cls.write_df_to_csv(pd.DataFrame(cls.DB_SUPPLIERPART_ROWS), cls.DB_SUPPLIERPART_COLUMNS, "part_supplierpart.csv")
 
     @classmethod
     def add_part_row_db(cls, data):
