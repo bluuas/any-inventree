@@ -186,11 +186,40 @@ To access the PostgreSQL database, you can use DBeaver:
 
 </details>
 
-## Notes for cleaning up...
+## start from scratch...
 
 ```bash
 sudo docker stop $(sudo docker ps -aq)
 sudo docker rm $(sudo docker ps -aq)
 sudo docker rmi $(sudo docker images -q)
 sudo docker volume rm $(sudo docker volume ls -q)
+sudo rm -rf inventree-data
+```
+
+Then re-run
+
+```bash
+docker compose run --rm inventree-server invoke update
+docker compose up -d
+```
+
+```bash
+source .venv/bin/activate
+python3 scripts/inventree_initial_setup.py --config-file "scripts/gsheet-database/AM0304_Component_DB - Configuration.csv"
+python3 scripts/inventree_create_units.py
+python3 scripts/inventree_process_csv.py --directory "gsheet-database/" --method CSV --log-level INFO
+```
+
+```bash
+docker compose run --rm inventree-server invoke backup
+scp data/backup/*.gz ubuntu@short-circuits.sandbox.anybotics.com:/home/ubuntu/inventree-project/
+```
+
+On the server
+
+```bash
+docker compose down
+sudo mv default-data.psql.bin.gz data.tar.gz ./inventree-data/backup/
+docker compose run --rm inventree-server invoke restore
+docker compose up -d
 ```
