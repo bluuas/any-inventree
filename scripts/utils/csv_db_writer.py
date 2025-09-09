@@ -3,6 +3,7 @@ import os
 import logging
 from .config import get_site_url
 from .error_codes import ErrorCodes
+from .cache import entity_cache
 
 from inventree.api import InvenTreeAPI
 from inventree.base import Attachment
@@ -63,33 +64,40 @@ class CsvDbWriter:
 
     @classmethod
     def fetch_id_counters(cls, api: InvenTreeAPI):
-        return
-        parts = Part.list(api)
+        logger.info("Fetching ID upper limits from cache...")
+        if not entity_cache.get('part'):
+            entity_cache.populate(api)
+
+        parts = entity_cache.get('part', [])
         upper = max((part['pk'] for part in parts), default=None)
         if upper is not None:
             cls.ID_UPPER_LIMIT["part"] = upper
 
-        parameters = Parameter.list(api)
+        parameters = entity_cache.get('parameter', [])
         upper = max((param['pk'] for param in parameters), default=None)
         if upper is not None:
             cls.ID_UPPER_LIMIT["partparameter"] = upper
 
-        related = PartRelated.list(api)
+        logger.debug("fetching related parts from cache...")
+        related = entity_cache.get('partrelated', [])
         upper = max((rel['pk'] for rel in related), default=None)
         if upper is not None:
             cls.ID_UPPER_LIMIT["partrelated"] = upper
 
-        manufacturers = ManufacturerPart.list(api)
+        logger.debug("fetching manufacturer parts from cache...")
+        manufacturers = entity_cache.get('manufacturerpart', [])
         upper = max((man['pk'] for man in manufacturers), default=None)
         if upper is not None:
             cls.ID_UPPER_LIMIT["manufacturerpart"] = upper
 
-        attachments = Attachment.list(api)
+        logger.debug("fetching attachments from cache...")
+        attachments = entity_cache.get('attachment', [])
         upper = max((att['pk'] for att in attachments), default=None)
         if upper is not None:
             cls.ID_UPPER_LIMIT["attachment"] = upper
 
-        supplierparts = SupplierPart.list(api)
+        logger.debug("fetching supplier parts from cache...")
+        supplierparts = entity_cache.get('supplierpart', [])
         upper = max((sup['pk'] for sup in supplierparts), default=None)
         if upper is not None:
             cls.ID_UPPER_LIMIT["supplierpart"] = upper

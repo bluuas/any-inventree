@@ -32,6 +32,7 @@ class KiCadPlugin:
         self.api = api
         self.plugin_pk = plugin_pk or Config.KICAD_PLUGIN_PK
         self.site_url = Config.get_site_url()
+        # self.site_url = "http://short-circuits.sandbox.anybotics.com"
         self.category_cache = {}
         self.settings = {
             'KICAD_FOOTPRINT_PARAMETER': None,
@@ -49,7 +50,7 @@ class KiCadPlugin:
                 headers={"Authorization": f"Token {self.api.token}"}
             )
             if response.status_code == 200:
-                # logger.debug(f"Fetched KiCad categories successfully. Found following categories: {response.json()}")
+                logger.info(f"Fetched KiCad categories successfully. Found following categories: {response.json()}")
                 self.category_cache = {
                     cat['category']['id']: cat 
                     for cat in response.json() 
@@ -65,6 +66,7 @@ class KiCadPlugin:
         Add a category to the KiCad plugin if not already present.
         Fetches the cache from the API if the cache is empty.
         """
+        logger.info(f"Try adding category {category_pk} to KiCad plugin.")
         # Fetch cache if empty
         if not self.category_cache:
             self.fetch_categories()
@@ -82,7 +84,7 @@ class KiCadPlugin:
             )
             if response.status_code == 200:
                 self.category_cache[category_pk] = True
-                logger.debug(f"Added category {category_pk} to cache and KiCAD plugin: {response.json()}")
+                logger.info(f"Added category {category_pk} to cache and KiCAD plugin: {response.json()}")
             else:
                 logger.error(f"Failed to add category {category_pk} to KiCAD plugin: {response.status_code} - {response.text}")
         except Exception as e:

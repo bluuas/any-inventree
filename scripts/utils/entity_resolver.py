@@ -11,25 +11,11 @@ from inventree.part import PartCategory, Part, Parameter, ParameterTemplate, Par
 from inventree.stock import StockItem, StockLocation
 from .error_codes import ErrorCodes
 from .csv_db_writer import csv_db_writer
+from .cache import entity_cache
 
 logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
-# Caches for entities to speed up lookups
-caches = {
-    Attachment: {},
-    BomItem: {},
-    Company: {},
-    ManufacturerPart: {},
-    Parameter: {},
-    ParameterTemplate: {},
-    Part: {},
-    PartCategory: {},
-    PartRelated: {},
-    StockItem: {},
-    StockLocation: {},
-    SupplierPart: {},
-}
 
 # Lookup Table for identifiers per entity type
 IDENTIFIER_LUT = {
@@ -87,7 +73,7 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
         return None
 
     try:
-        cache = caches[entity_type]
+        cache = entity_cache.caches[entity_type]
         composite_key = tuple(str(data[identifier]) for identifier in identifiers if identifier in data)
 
         entity_id = cache.get(composite_key)
@@ -159,11 +145,3 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
     except Exception as e:
         logger.error(f"Error resolving entity for {entity_type.__name__}: {e}")
         return None
-
-def clear_entity_caches():
-    """
-    Clear all entity caches (for use after mass deletion, etc).
-    """
-    for cache in caches.values():
-        cache.clear()
-        cache.clear()

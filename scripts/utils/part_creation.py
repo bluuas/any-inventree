@@ -2,6 +2,7 @@
 Functions for creating categories, parts, parameters, suppliers, manufacturers, and stock locations.
 """
 import logging
+from utils.csv_db_writer import csv_db_writer
 from utils.logging_utils import get_configured_level
 import pandas as pd
 from inventree.api import InvenTreeAPI
@@ -62,26 +63,26 @@ def create_part(api: InvenTreeAPI, row, category_pk):
         except Exception as e:
             logger.warning(f"Failed to create attachment for part {pk}: {e}")
 
-        # # Update part link and IPN
-        # try:
-            
-        #     api.patch(url=f"part/{pk}/", data={'link': f"{site_url}/part/{pk}/"})
-        #     designator = row['DESIGNATOR [str]'] if not pd.isna(row['DESIGNATOR [str]']) else ''
-        #     rev0_pk = pk  # Placeholder for revision 0 part PK, TODO
-        #     rev0_str = str(rev0_pk).zfill(6)
-        #     api.patch(url=f"part/{pk}/", data={'IPN': f"{designator}{rev0_str}-{pk}"})
-        # except Exception as e:
-        #     logger.warning(f"Failed to update part {pk} link or IPN: {e}")
+        # Update part link and IPN
+        if not csv_db_writer.is_active():
+            try:
+                api.patch(url=f"part/{pk}/", data={'link': f"{site_url}/part/{pk}/"})
+                designator = row['DESIGNATOR [str]'] if not pd.isna(row['DESIGNATOR [str]']) else ''
+                rev0_pk = pk  # Placeholder for revision 0 part PK, TODO
+                rev0_str = str(rev0_pk).zfill(7)
+                api.patch(url=f"part/{pk}/", data={'IPN': f"{designator}{rev0_str}-{pk}"})
+            except Exception as e:
+                logger.warning(f"Failed to update part {pk} link or IPN: {e}")
 
-        # get the part relations from RELATEDPARTS (comma separated string)
-        try:
-            related_parts_str = row.get('RELATEDPARTS')
-            if pd.notna(related_parts_str) and related_parts_str:
-                related_parts = [p.strip() for p in related_parts_str.split(',') if p.strip()]
-                for related_part in related_parts:
-                    add_pending_relation(pk, related_part)
-        except Exception as e:
-            logger.warning(f"Failed to add pending relations for part {pk}: {e}")
+            # get the part relations from RELATEDPARTS (comma separated string)
+            try:
+                related_parts_str = row.get('RELATEDPARTS')
+                if pd.notna(related_parts_str) and related_parts_str:
+                    related_parts = [p.strip() for p in related_parts_str.split(',') if p.strip()]
+                    for related_part in related_parts:
+                        add_pending_relation(pk, related_part)
+            except Exception as e:
+                logger.warning(f"Failed to add pending relations for part {pk}: {e}")
         return pk, ErrorCodes.SUCCESS
         
     except Exception as e:
