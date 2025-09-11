@@ -50,7 +50,7 @@ class KiCadPlugin:
                 headers={"Authorization": f"Token {self.api.token}"}
             )
             if response.status_code == 200:
-                logger.info(f"Fetched KiCad categories successfully. Found following categories: {response.json()}")
+                logger.info(f"Fetched KiCad categories successfully.")
                 self.category_cache = {
                     cat['category']['id']: cat 
                     for cat in response.json() 
