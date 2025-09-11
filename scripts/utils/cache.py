@@ -24,7 +24,7 @@ class EntityCache:
         }
 
         # Lookup Table for identifiers per entity type
-        self.IDENTIFIER_LUT = {
+        self.identifier_lut = {
             Attachment: ['link', 'model_id'],
             BomItem: ['part', 'sub_part'],
             Company: ['name'],
@@ -60,14 +60,11 @@ class EntityCache:
                         pk = getattr(item, 'pk', None)
                         if pk is None:
                             continue
-                        attrs = {}
-                        for attr in self.IDENTIFIER_LUT.get(entity_cls, []):
-                            attrs[attr] = getattr(item, attr, None)
+                        attrs = {attr: getattr(item, attr, None) for attr in self.identifier_lut.get(entity_cls, [])}
                         self.add(entity_cls, pk, attrs)
                     if len(items) < chunk_size:
                         break
                     offset += chunk_size
-
                 logger.info(f"Cached {len(self.caches[entity_cls])} items of type {entity_cls.__name__}")
         except Exception as e:
             logger.error(f"Error populating cache: {e}")
@@ -76,7 +73,8 @@ class EntityCache:
         return self.caches.get(entity_cls, default)
 
     def clear(self):
-        self.caches.clear()
+        for cache in self.caches.values():
+            cache.clear()
 
     def refresh(self, api, entity_cls):
         """Refresh a specific entity in the cache."""
@@ -96,19 +94,18 @@ class EntityCache:
             logger.debug(f"Searching StockLocation cache with identifiers: {identifiers}")
             logger.debug(f"Current StockLocation cache: {self.caches.get(StockLocation, {})}")
 
-        id_fields = self.IDENTIFIER_LUT.get(entity_cls, [])
+        id_fields = self.identifier_lut.get(entity_cls, [])
         if not id_fields:
             logger.error(f"No identifiers found for entity type: {entity_cls.__name__}")
             return None
         cache = self.caches.get(entity_cls, {})
-        # Build composite key using raw values, not str
         composite_key = tuple(identifiers.get(field) for field in id_fields)
-
         pk = cache.get(composite_key)
         if pk is not None:
             logger.debug(f"{entity_cls.__name__} '{composite_key}' found in cache with ID: {pk}")
             return pk
-    
+        return None
+
     def add(self, entity_cls, pk, data):
         """
         Add a new entity to the cache.
@@ -116,9 +113,8 @@ class EntityCache:
         pk: primary key of the entity
         data: dict of identifier field -> value
         """
-        id_fields = self.IDENTIFIER_LUT.get(entity_cls, [])
-        attrs = {field: data.get(field) for field in id_fields}
-        composite_key = tuple(attrs.get(field) for field in id_fields)
+        id_fields = self.identifier_lut.get(entity_cls, [])
+        composite_key = tuple(data.get(field) for field in id_fields)
         self.caches[entity_cls][composite_key] = pk
 
 # Singleton instance
