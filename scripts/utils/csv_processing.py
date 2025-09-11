@@ -71,8 +71,7 @@ def process_database_file(api, filename):
             logger.info(f"Processed row {row.name} successfully: {row['NAME']}")
         else:
             logger.error(f"Error processing row {row.name}: {row['NAME']} (Error code: {error_code})")
-            
-        
+
     # resolve pending relations
     try:
         resolve_pending_relations(api)

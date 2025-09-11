@@ -16,23 +16,6 @@ from .cache import entity_cache
 logger = logging.getLogger('InvenTreeCLI')
 logger.setLevel(get_configured_level() if callable(get_configured_level) else logging.INFO)
 
-
-# Lookup Table for identifiers per entity type
-IDENTIFIER_LUT = {
-    Attachment: ['link', 'model_id'],
-    BomItem: ['part', 'sub_part'],
-    Company: ['name'],
-    ManufacturerPart: ['MPN'],
-    Parameter: ['part', 'template'],
-    ParameterTemplate: ['name'],
-    Part: ['name', 'category', 'revision'],
-    PartCategory: ['name', 'parent'],
-    PartRelated: ['part_1', 'part_2'],
-    StockItem: ['part', 'supplier_part'],
-    StockLocation: ['name'],
-    SupplierPart: ['SKU'],
-}
-
 def resolve_category_string(api: InvenTreeAPI, category_string: str) -> tuple:
     """
     Resolve a category string (e.g. 'Passive Component / Resistor / Metal thickfilm / generic ')
@@ -67,80 +50,50 @@ def resolve_entity(api: InvenTreeAPI, entity_type, data):
     Resolve an entity by checking cache first, then API (once), then creating if needed.
     Returns entity PK or None on failure.
     """
-    identifiers = IDENTIFIER_LUT.get(entity_type, [])
-    if not identifiers:
-        logger.error(f"No identifiers found for entity type: {entity_type.__name__}")
-        return None
-
     try:
-        cache = entity_cache.caches[entity_type]
-        composite_key = tuple(str(data[identifier]) for identifier in identifiers if identifier in data)
+        # 1. try to find in cache
+        pk = entity_cache.find_by_identifiers(entity_type, data)
+        if pk is not None:
+            return pk
+        else:
+            logger.debug(f"{entity_type.__name__} not found in local cache")
 
-        entity_id = cache.get(composite_key)
-        if entity_id is not None:
-            logger.debug(f"{entity_type.__name__} '{composite_key}' found in cache with ID: {entity_id}")
-            return entity_id
-
-        # Only fetch from API if cache is empty
-        if not cache:
-            # skip fetching if entity_type is Attachment, Part, PartParameter, PartRelated, ManufacturerPart, SupplierPart
-            if entity_type not in {Part, Attachment, Parameter, PartRelated, ManufacturerPart, SupplierPart}:
-                try:
-                    entities = entity_type.list(api)
-                    entity_dict = {
-                        tuple(str(getattr(entity, identifier)) for identifier in identifiers): entity.pk 
-                        for entity in entities
-                    }
-                    cache.update(entity_dict)
-                except Exception as e:
-                    logger.error(f"Error fetching {entity_type.__name__} entities from API: {e}")
-                    return None
-
-                # Check again after updating the cache
-                entity_id = cache.get(composite_key)
-                if entity_id is not None:
-                    logger.debug(f"{entity_type.__name__} '{composite_key}' already exists in database with ID: {entity_id}")
-                    return entity_id
-
-        # Create new entity if not found
-        pk = None
+        # 2. not found in cache, try to find it in the csv_db_writer (if active)
         if csv_db_writer.is_active():
             try:
-                pk, error = csv_db_writer.create(api, entity_type, data)
-                # todo: handle error case and refactor duplicated code
-                if error == ErrorCodes.ENTITY_CREATION_FAILED:
-                    new_entity = entity_type.create(api, data)
-                    pk = new_entity.pk
-                    
-                cache[composite_key] = pk
-                return pk
-            except Exception as e:
-                logger.error(f"Error creating new {entity_type.__name__} entity '{composite_key}': {e}")
-                return None
-        else:
-            try:
-                new_entity = entity_type.create(api, data)
-                pk = new_entity.pk
-                logger.debug(f"{entity_type.__name__} '{composite_key}' created successfully via API at ID: {pk}")
-                cache[composite_key] = pk
-                return pk
-            # Todo: refactor this code section
-            # catch exception if duplicated part already exists, fetch and try again
-            except Exception as e:
-                logger.error(f"Error creating new {entity_type.__name__} entity '{composite_key}': {e}")
-                entities = entity_type.list(api)
-                entity_dict = {
-                    tuple(str(getattr(entity, identifier)) for identifier in identifiers): entity.pk 
-                    for entity in entities
-                }
-                cache.update(entity_dict)
-                entity_id = cache.get(composite_key)
-                if entity_id is not None:
-                    logger.debug(f"{entity_type.__name__} '{composite_key}' already exists in database with ID: {entity_id}")
-                    return entity_id
+                pk = csv_db_writer.find_by_identifiers(entity_type, data)
+                if pk is not None:
+                    return pk
                 else:
-                    logger.error(f"Error resolving entity for {entity_type.__name__}: {e}")
-                    return None
+                    logger.debug(f"{entity_type.__name__} not found in csv_db_writer table")
+            except Exception as e:
+                logger.error(f"Error searching csv_db_writer for {entity_type.__name__}: {e}")
+                return None
+            
+        # 3. not found in cache or csv_db_writer, try to create it via csv_db_writer (if active)
+        if csv_db_writer.is_active():
+            pk, error = csv_db_writer.create(api, entity_type, data)
+            # Add to cache
+            if error == ErrorCodes.SUCCESS:
+                entity_cache.add(entity_type, pk, data.copy())
+                logger.debug(f"{entity_type.__name__} '{data}' created successfully via csv_db_writer at ID: {pk}")
+                return pk
+            elif error == ErrorCodes.ENTITY_CREATION_FAILED:
+                pass  # try to create via API below
+            else:
+                logger.error(f"Error creating {entity_type.__name__} via csv_db_writer: {error}")
+                return None
+
+        # 4. not found in cache, csv_db_writer inactive, add it via API
+        try:
+            new_entity = entity_type.create(api, data)
+            pk = new_entity.pk
+            logger.debug(f"{entity_type.__name__} '{data}' created successfully via InvenTree API at ID: {pk}")
+            entity_cache.add(entity_type, pk, data.copy())
+            return pk
+        except Exception as e:
+            logger.error(f"Error creating new {entity_type.__name__}: {e}")
+            return None
 
     except Exception as e:
         logger.error(f"Error resolving entity for {entity_type.__name__}: {e}")

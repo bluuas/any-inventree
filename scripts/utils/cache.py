@@ -39,7 +39,7 @@ class EntityCache:
             SupplierPart: ['SKU'],
         }
 
-    def populate(self, api, keys=None, chunk_size=1000):
+    def populate(self, api, keys=None, chunk_size=500):
         """
         Populate the cache with all or selected entities.
         If keys is None, populate all known entities.
@@ -63,11 +63,12 @@ class EntityCache:
                         attrs = {}
                         for attr in self.IDENTIFIER_LUT.get(entity_cls, []):
                             attrs[attr] = getattr(item, attr, None)
-                        self.caches[entity_cls][pk] = attrs
+                        self.add(entity_cls, pk, attrs)
                     if len(items) < chunk_size:
                         break
                     offset += chunk_size
-                    break # just for testing
+
+                logger.info(f"Cached {len(self.caches[entity_cls])} items of type {entity_cls.__name__}")
         except Exception as e:
             logger.error(f"Error populating cache: {e}")
 
@@ -84,6 +85,41 @@ class EntityCache:
     def get_number_of_cached_items(self, entity_cls):
         """Return the number of cached items for a specific entity type."""
         return len(self.caches.get(entity_cls, {}))
+
+    def find_by_identifiers(self, entity_cls, identifiers):
+        """
+        Search the cache for an entity of type entity_cls with matching identifier values.
+        identifiers: dict of identifier field -> value
+        Returns the pk if found, else None.
+        """
+        if entity_cls == StockLocation:
+            logger.debug(f"Searching StockLocation cache with identifiers: {identifiers}")
+            logger.debug(f"Current StockLocation cache: {self.caches.get(StockLocation, {})}")
+
+        id_fields = self.IDENTIFIER_LUT.get(entity_cls, [])
+        if not id_fields:
+            logger.error(f"No identifiers found for entity type: {entity_cls.__name__}")
+            return None
+        cache = self.caches.get(entity_cls, {})
+        # Build composite key using raw values, not str
+        composite_key = tuple(identifiers.get(field) for field in id_fields)
+
+        pk = cache.get(composite_key)
+        if pk is not None:
+            logger.debug(f"{entity_cls.__name__} '{composite_key}' found in cache with ID: {pk}")
+            return pk
+    
+    def add(self, entity_cls, pk, data):
+        """
+        Add a new entity to the cache.
+        entity_cls: class of the entity (e.g. Part)
+        pk: primary key of the entity
+        data: dict of identifier field -> value
+        """
+        id_fields = self.IDENTIFIER_LUT.get(entity_cls, [])
+        attrs = {field: data.get(field) for field in id_fields}
+        composite_key = tuple(attrs.get(field) for field in id_fields)
+        self.caches[entity_cls][composite_key] = pk
 
 # Singleton instance
 entity_cache = EntityCache()

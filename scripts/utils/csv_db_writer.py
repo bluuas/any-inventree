@@ -8,7 +8,7 @@ from .cache import entity_cache
 from inventree.api import InvenTreeAPI
 from inventree.base import Attachment
 from inventree.company import ManufacturerPart, SupplierPart
-from inventree.part import Part, Parameter, PartRelated
+from inventree.part import Part, Parameter, ParameterTemplate, PartRelated
 
 logger = logging.getLogger('InvenTreeCLI')
 
@@ -65,53 +65,64 @@ class CsvDbWriter:
     @classmethod
     def fetch_id_counters(cls, api: InvenTreeAPI):
         logger.info("Fetching ID upper limits from cache...")
-        if not entity_cache.get('part'):
+        if not entity_cache.get(Part):
+            logger.warning("Entity cache is empty, populating now...")
             entity_cache.populate(api)
 
-        parts = entity_cache.get('part', [])
-        upper = max((part['pk'] for part in parts), default=None)
-        if upper is not None:
-            cls.ID_UPPER_LIMIT["part"] = upper
-
-        parameters = entity_cache.get('parameter', [])
-        upper = max((param['pk'] for param in parameters), default=None)
-        if upper is not None:
-            cls.ID_UPPER_LIMIT["partparameter"] = upper
-
-        logger.debug("fetching related parts from cache...")
-        related = entity_cache.get('partrelated', [])
-        upper = max((rel['pk'] for rel in related), default=None)
-        if upper is not None:
-            cls.ID_UPPER_LIMIT["partrelated"] = upper
-
-        logger.debug("fetching manufacturer parts from cache...")
-        manufacturers = entity_cache.get('manufacturerpart', [])
-        upper = max((man['pk'] for man in manufacturers), default=None)
-        if upper is not None:
-            cls.ID_UPPER_LIMIT["manufacturerpart"] = upper
-
-        logger.debug("fetching attachments from cache...")
-        attachments = entity_cache.get('attachment', [])
-        upper = max((att['pk'] for att in attachments), default=None)
-        if upper is not None:
-            cls.ID_UPPER_LIMIT["attachment"] = upper
-
-        logger.debug("fetching supplier parts from cache...")
-        supplierparts = entity_cache.get('supplierpart', [])
-        upper = max((sup['pk'] for sup in supplierparts), default=None)
-        if upper is not None:
-            cls.ID_UPPER_LIMIT["supplierpart"] = upper
-
-        logger.info(f"Fetched ID upper limits: {cls.ID_UPPER_LIMIT}")
+        cls.ID_UPPER_LIMIT["part"] = entity_cache.get_number_of_cached_items(Part)
+        cls.ID_UPPER_LIMIT["partparameter"] = entity_cache.get_number_of_cached_items(Parameter)
+        cls.ID_UPPER_LIMIT["parametertemplate"] = entity_cache.get_number_of_cached_items(ParameterTemplate)
+        cls.ID_UPPER_LIMIT["partrelated"] = entity_cache.get_number_of_cached_items(PartRelated)
+        cls.ID_UPPER_LIMIT["manufacturerpart"] = entity_cache.get_number_of_cached_items(ManufacturerPart)
+        cls.ID_UPPER_LIMIT["attachment"] = entity_cache.get_number_of_cached_items(Attachment)
+        cls.ID_UPPER_LIMIT["supplierpart"] = entity_cache.get_number_of_cached_items(SupplierPart)
 
     @classmethod
     def get_next_id(cls, key):
         cls.ID_UPPER_LIMIT[key] += 1
         return cls.ID_UPPER_LIMIT[key]
+    
+    @classmethod
+    def _get_entity_rows(cls, entity_type):
+        if entity_type.__name__ == "Part":
+            return cls.DB_PART_ROWS
+        elif entity_type.__name__ == "Parameter":
+            return cls.DB_PARTPARAMETER_ROWS
+        elif entity_type.__name__ == "PartRelated":
+            return cls.DB_PARTRELATED_ROWS
+        elif entity_type.__name__ == "ManufacturerPart":
+            return cls.DB_MANUFACTURERPART_ROWS
+        elif entity_type.__name__ == "Attachment":
+            return cls.DB_ATTACHMENT_ROWS
+        elif entity_type.__name__ == "SupplierPart":
+            return cls.DB_SUPPLIERPART_ROWS
+        else:
+            logger.warning(f"CsvDbWriter: Unsupported entity type {entity_type.__name__} for _get_entity_rows")
+            return []
 
     @classmethod
-    def list_parts(cls):
-        return [{"pk": row["id"], "name": row["name"]} for row in cls.DB_PART_ROWS]
+    def find_by_identifiers(cls, entity_type, data):
+        """
+        Find an entity in the CSV DB Writer "cache" by its identifiers.
+        Returns the PK if found, or None if not found.
+        """
+        identifier_fields = entity_cache.IDENTIFIER_LUT.get(entity_type, [])
+        if not identifier_fields:
+            logger.error(f"No identifiers defined for entity type: {entity_type.__name__}")
+            return None
+
+        for row in cls._get_entity_rows(entity_type):
+            match = True
+            for field in identifier_fields:
+                field_name = field
+                if field.endswith('_id'):
+                    field_name = field[:-3]
+                if str(row.get(field_name, '')).strip() != str(data.get(field, '')).strip():
+                    match = False
+                    break
+            if match:
+                return row.get('id')
+        return None
     
     @classmethod
     def write_df_to_csv(cls, df, columns, filename):
@@ -135,7 +146,7 @@ class CsvDbWriter:
         cls.write_df_to_csv(pd.DataFrame(cls.DB_PARTPARAMETER_ROWS), cls.DB_PARTPARAMETER_COLUMNS, "part_partparameter.csv")
         cls.write_df_to_csv(pd.DataFrame(cls.DB_PARTRELATED_ROWS), cls.DB_PARTRELATED_COLUMNS, "part_partrelated.csv")
         cls.write_df_to_csv(pd.DataFrame(cls.DB_MANUFACTURERPART_ROWS), cls.DB_MANUFACTURERPART_COLUMNS, "company_manufacturerpart.csv")
-        cls.write_df_to_csv(pd.DataFrame(cls.DB_ATTACHMENT_ROWS), cls.DB_ATTACHMENT_COLUMNS, "inventree_attachment.csv")
+        cls.write_df_to_csv(pd.DataFrame(cls.DB_ATTACHMENT_ROWS), cls.DB_ATTACHMENT_COLUMNS, "common_attachment.csv")
         cls.write_df_to_csv(pd.DataFrame(cls.DB_SUPPLIERPART_ROWS), cls.DB_SUPPLIERPART_COLUMNS, "part_supplierpart.csv")
 
     @classmethod
@@ -327,4 +338,4 @@ class CsvDbWriter:
             return None, ErrorCodes.ENTITY_CREATION_FAILED
         
 # Create a singleton instance of CsvDbWriter for use in other utils
-csv_db_writer = CsvDbWriter
+csv_db_writer = CsvDbWriter()

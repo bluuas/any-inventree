@@ -14,6 +14,7 @@ from utils.csv_processing import process_database_file
 from utils.logging_utils import set_log_level
 from inventree.api import InvenTreeAPI
 from utils.csv_db_writer import csv_db_writer
+from utils.cache import entity_cache
 
 logger = logging.getLogger('InvenTreeCLI')
 
@@ -56,7 +57,9 @@ def main():
     plugin = KiCadPlugin(api)
     plugin.install()
     plugin.configure_global_settings()
-    
+
+    entity_cache.populate(api)
+
     # Process CSV files if directory is provided
     if args.directory:
         # Get the directory of the current script
