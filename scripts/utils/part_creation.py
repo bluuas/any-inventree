@@ -132,9 +132,9 @@ def create_parameters(api: InvenTreeAPI, row, pk):
                 if pd.isna(raw_value) or not str(raw_value).strip():
                     logger.debug(f"Skipping empty parameter '{param_col}' for part {pk}.")
                     continue
-                logger.debug(f"Parsing value: {raw_value}, unit: {param_unit}")
+                # logger.debug(f"Parsing value: {raw_value}, unit: {param_unit}")
                 display_value, numeric_value = parse_parameter_value(raw_value, param_unit)
-                logger.debug(f"Parsed value: display='{display_value}', numeric={numeric_value}")
+                # logger.debug(f"Parsed value: display='{display_value}', numeric={numeric_value}")
 
                 resolve_entity(api, Parameter, {
                     'part': pk,
