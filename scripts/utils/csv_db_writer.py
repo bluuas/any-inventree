@@ -106,7 +106,7 @@ class CsvDbWriter:
         Find an entity in the CSV DB Writer "cache" by its identifiers.
         Returns the PK if found, or None if not found.
         """
-        identifier_fields = entity_cache.IDENTIFIER_LUT.get(entity_type, [])
+        identifier_fields = entity_cache.identifier_lut.get(entity_type, [])
         if not identifier_fields:
             logger.error(f"No identifiers defined for entity type: {entity_type.__name__}")
             return None

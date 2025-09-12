@@ -17,6 +17,8 @@ from utils.entity_resolver import resolve_entity, resolve_category_string
 from inventree.api import InvenTreeAPI
 from inventree.company import Company
 from inventree.part import PartCategory, ParameterTemplate
+from utils.cache import entity_cache
+from utils.csv_db_writer import csv_db_writer
 
 logger = logging.getLogger('InvenTreeCLI')
 
@@ -96,6 +98,8 @@ def main():
     # Set log level
     set_log_level(args.log_level)
 
+    csv_db_writer.set_active(True)
+
     # Validate configuration
     missing_vars = Config.validate_required()
     if missing_vars:
@@ -114,6 +118,8 @@ def main():
     plugin = KiCadPlugin(api)
     plugin.install()
     plugin.configure_global_settings()
+
+    entity_cache.populate(api)
 
     process_configuration_file(api, plugin, args.config_file)
 
